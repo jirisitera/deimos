@@ -1,0 +1,12 @@
+{
+  "pack": {
+    "description": "eris pack",
+    "min_format": 97,
+    "max_format": 97
+  },
+  "sodium": {
+    "ignored_shaders": [
+      "fog.glsl"
+    ]
+  }
+}
