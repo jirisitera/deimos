@@ -22,9 +22,11 @@ final class CameraAnchor {
     private static final float MAX_YAW_OFFSET = 90.0f;
     private static final float SMOOTHING = 0.16f;
     private static final Pos[] CAMERA_POSITIONS = {
-        new Pos(4.5, 12.75, 4.25, 0, 0),
-        new Pos(8, 28, 0, 34, 65),
-        new Pos(-16, 28, 0, 23, 43)
+        Eris.SPAWN.add(0, 1.75, -0.25),
+        new Pos(1.4375, 13.925, 1.375, -25, 25),
+        new Pos(15.53515625, 13.925, 1.41796875, 25, 25),
+        new Pos(1.479736328125, 13.925, 13.46142578125, -35, 25),
+        new Pos(15.54638671875, 13.925, 13.45458984375, 35, 25)
     };
     private final Map<UUID, Entity> anchors = new HashMap<>();
     private final Map<UUID, Float> baseYaws = new HashMap<>();
@@ -92,11 +94,7 @@ final class CameraAnchor {
             display.addPassenger(player);
         });
         sendCameraActionBar(player, 0);
-        actionBarTasks.put(playerId, player.scheduler().scheduleTask(
-            () -> sendCameraActionBar(player, cameraIndexes.get(playerId)),
-            TaskSchedule.tick(1),
-            TaskSchedule.tick(20)
-        ));
+        actionBarTasks.put(playerId, player.scheduler().scheduleTask(() -> sendCameraActionBar(player, cameraIndexes.get(playerId)), TaskSchedule.tick(1), TaskSchedule.tick(20)));
     }
 
     int nextCamera(Player player) {

@@ -5,6 +5,7 @@ import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.*;
 import net.minestom.server.instance.InstanceContainer;
@@ -16,31 +17,24 @@ import java.util.List;
 
 public final class Eris {
     public static final ComponentLogger LOGGER = ComponentLogger.logger(Eris.class);
-
+    public static final Pos SPAWN = new Pos(8.5, 11.0, 4.5, 0.0F, 0.0F);
     void main() {
         MinecraftServer server = MinecraftServer.init(new Auth.Online());
 
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
-
         instance.setChunkSupplier(LightingChunk::new);
-        instance.setGenerator(unit -> {
-            unit.modifier().fillHeight(0, 10, Block.SMOOTH_STONE);
-        });
-
-        instance.setBlock(0, 0, 0, Block.SMOOTH_STONE, false);
 
         StructureLoader.load(this.getClass().getClassLoader(), "office.nbt", instance);
-
         StructureLoader structureLoader = new StructureLoader();
-
-        structureLoader.spawn(instance);
+        structureLoader.spawnAll(instance);
 
         CursorProbe cursorProbe = new CursorProbe();
         CameraAnchor cameraAnchor = new CameraAnchor();
         MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {
-            Player player = event.getPlayer();
             event.setSpawningInstance(instance);
-            player.setRespawnPoint(new Pos(4.5, 11, 4.5));
+
+            Player player = event.getPlayer();
+            player.setRespawnPoint(SPAWN);
             cursorProbe.install(player);
         });
 
