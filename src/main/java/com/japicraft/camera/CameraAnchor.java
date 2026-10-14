@@ -1,5 +1,6 @@
-package com.japicraft;
+package com.japicraft.camera;
 
+import com.japicraft.instance.InstanceManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -8,31 +9,27 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
-import net.minestom.server.instance.Instance;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-final class CameraAnchor {
+public final class CameraAnchor {
     private static final float MAX_YAW_OFFSET = 90.0f;
     private static final float SMOOTHING = 0.16f;
     private static final Pos[] CAMERA_POSITIONS = {
-        Eris.SPAWN.add(0, 1.75, -0.25),
+        InstanceManager.MAIN_SPAWN.add(0, 1.75, -0.25),
         new Pos(1.4375, 13.925, 1.375, -25.0F, 25.0F),
         new Pos(15.53515625, 13.925, 1.41796875, 25.0F, 25.0F),
         new Pos(1.479736328125, 13.925, 13.46142578125, -35.0F, 25.0F),
         new Pos(15.54638671875, 13.925, 13.45458984375, 35.0F, 25.0F)
     };
-    private final Map<UUID, Entity> anchors = new HashMap<>();
-    private final Map<UUID, Float> baseYaws = new HashMap<>();
-    private final Map<UUID, View> views = new HashMap<>();
-    private final Map<UUID, Integer> cameraIndexes = new HashMap<>();
-    private final Map<UUID, Task> actionBarTasks = new HashMap<>();
+    private static final Tag<Entity> anchor = Tag.Transient("cameraAnchor");
+    private static final Tag<Float> baseYaw = Tag.Transient("baseYaw");
+    private static final Tag<View> view = Tag.Transient("view");
+    private static final Tag<Integer> cameraIndex = Tag.Transient("cameraIndex");
+    private static final Tag<Task> actionBarTask = Tag.Transient("actionBarTask");
 
     private static float ease(float current, float target) {
         float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
@@ -52,14 +49,14 @@ final class CameraAnchor {
         return delta;
     }
 
-    private static void sendCameraActionBar(Player player, int currentIndex) {
+    private static void sendCameraActionBar(Player player) {
         Component message = Component.text("Cameras: ", NamedTextColor.WHITE);
         for (int index = 1; index < CAMERA_POSITIONS.length; index++) {
             if (index > 1) {
                 message = message.append(Component.space());
             }
 
-            boolean selected = index == currentIndex;
+            boolean selected = index == player.getTag(CameraAnchor.cameraIndex);
             Component cameraId = Component.text(
                 selected ? "[" + index + "]" : String.valueOf(index),
                 selected ? NamedTextColor.YELLOW : NamedTextColor.GRAY
@@ -72,27 +69,28 @@ final class CameraAnchor {
         player.sendActionBar(message);
     }
 
-    private void showCameraActionBar(Player player, UUID playerId, int currentIndex) {
-        sendCameraActionBar(player, currentIndex);
-        if (actionBarTasks.containsKey(playerId)) {
+    private static void showCameraActionBar(Player player) {
+        CameraAnchor.sendCameraActionBar(player);
+        if (player.hasTag(CameraAnchor.actionBarTask)) {
             return;
         }
-        actionBarTasks.put(playerId, player.scheduler().scheduleTask(
-            () -> sendCameraActionBar(player, cameraIndexes.get(playerId)),
+        player.setTag(CameraAnchor.actionBarTask, player.scheduler().scheduleTask(
+            () -> CameraAnchor.sendCameraActionBar(player),
             TaskSchedule.tick(1),
             TaskSchedule.tick(20)
         ));
     }
 
-    private void hideCameraActionBar(Player player, UUID playerId) {
-        Task actionBarTask = actionBarTasks.remove(playerId);
+    private static void hideCameraActionBar(Player player) {
+        Task actionBarTask = player.getTag(CameraAnchor.actionBarTask);
         if (actionBarTask != null) {
             actionBarTask.cancel();
         }
         player.sendActionBar(Component.empty());
+        player.removeTag(CameraAnchor.actionBarTask);
     }
 
-    void attach(Player player, Instance instance) {
+    public static void attach(Player player) {
         Entity display = new Entity(EntityType.ITEM_DISPLAY);
 
         display.editEntityMeta(ItemDisplayMeta.class, meta -> {
@@ -101,37 +99,33 @@ final class CameraAnchor {
             meta.setHasNoGravity(true);
         });
 
-        UUID playerId = player.getUuid();
-        anchors.put(playerId, display);
-        cameraIndexes.put(playerId, 0);
+        player.setTag(CameraAnchor.anchor, display);
+        player.setTag(CameraAnchor.cameraIndex, 0);
 
         Pos initialPosition = player.getPosition();
-        baseYaws.put(playerId, initialPosition.yaw());
-        views.put(playerId, new View(initialPosition.yaw(), initialPosition.pitch()));
 
-        display.setInstance(instance, CAMERA_POSITIONS[0]).thenRun(() -> {
+        player.setTag(CameraAnchor.baseYaw, initialPosition.yaw());
+        player.setTag(CameraAnchor.view, new View(initialPosition.yaw(), initialPosition.pitch()));
+
+        display.setInstance(player.getInstance(), CAMERA_POSITIONS[0]).thenRun(() -> {
             player.spectate(display);
             display.addPassenger(player);
         });
     }
 
-    int nextCamera(Player player) {
-        Entity anchor = anchors.get(player.getUuid());
+    public static int nextCamera(Player player) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor == null) {
             return -1;
         }
-
-        UUID playerId = player.getUuid();
-        int nextIndex = (cameraIndexes.get(playerId) + 1) % CAMERA_POSITIONS.length;
-
+        int nextIndex = (player.getTag(CameraAnchor.cameraIndex) + 1) % CAMERA_POSITIONS.length;
         Pos cameraPosition = CAMERA_POSITIONS[nextIndex];
 
-        cameraIndexes.put(playerId, nextIndex);
-        baseYaws.put(playerId, cameraPosition.yaw());
-        views.put(playerId, new View(cameraPosition.yaw(), cameraPosition.pitch()));
+        player.setTag(CameraAnchor.cameraIndex, nextIndex);
+        player.setTag(CameraAnchor.baseYaw, cameraPosition.yaw());
+        player.setTag(CameraAnchor.view, new View(cameraPosition.yaw(), cameraPosition.pitch()));
 
         anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(0));
-
         anchor.teleport(cameraPosition);
 
         if (nextIndex == 0) {
@@ -140,16 +134,16 @@ final class CameraAnchor {
                 anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(3));
             }, TaskSchedule.tick(3), TaskSchedule.stop());
 
-            hideCameraActionBar(player, playerId);
+            hideCameraActionBar(player);
         } else {
-            showCameraActionBar(player, playerId, nextIndex);
+            showCameraActionBar(player);
         }
         return nextIndex;
     }
 
-    void update(Player player) {
-        Entity anchor = anchors.get(player.getUuid());
-        View view = views.get(player.getUuid());
+    public static void update(Player player) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
+        View view = player.getTag(CameraAnchor.view);
         if (anchor == null || view == null) {
             return;
         }
@@ -165,26 +159,26 @@ final class CameraAnchor {
         anchor.teleport(anchor.getPosition().withView(view.yaw, view.pitch));
     }
 
-    Pos getCameraPosition(Player player) {
-        Entity anchor = anchors.get(player.getUuid());
+    public static Pos getCameraPosition(Player player) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
         return anchor == null ? null : anchor.getPosition();
     }
 
-    boolean isMainCamera(Player player) {
+    public static boolean isMainCamera(Player player) {
         if (getCameraPosition(player) == null) {
             return false;
         }
-        return cameraIndexes.getOrDefault(player.getUuid(), -1) == 0;
+        return player.getTag(CameraAnchor.cameraIndex) == 0;
     }
 
-    void updateTarget(Player player, Pos position) {
-        Entity anchor = anchors.get(player.getUuid());
+    public static void updateTarget(Player player, Pos position) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor == null) {
             return;
         }
 
-        int cameraIndex = cameraIndexes.get(player.getUuid());
-        View view = views.get(player.getUuid());
+        int cameraIndex = player.getTag(CameraAnchor.cameraIndex);
+        View view = player.getTag(CameraAnchor.view);
         if (view == null) {
             return;
         }
@@ -196,24 +190,27 @@ final class CameraAnchor {
 
         float yawDelta = position.yaw() - view.inputYaw;
         view.inputYaw += unwrapDelta(yawDelta);
-        float yawOffset = view.inputYaw - baseYaws.get(player.getUuid());
-        view.targetYaw = baseYaws.get(player.getUuid()) + Math.clamp(yawOffset, -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
+
+        float baseYaw = player.getTag(CameraAnchor.baseYaw);
+        float yawOffset = view.inputYaw - baseYaw;
+
+        view.targetYaw = baseYaw + Math.clamp(yawOffset, -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
         view.targetPitch = position.pitch();
     }
 
-    void detach(Player player) {
-        UUID playerId = player.getUuid();
-        Entity anchor = anchors.remove(playerId);
-        baseYaws.remove(playerId);
-        views.remove(playerId);
-        cameraIndexes.remove(playerId);
-        Task actionBarTask = actionBarTasks.remove(playerId);
-        if (actionBarTask != null) {
-            actionBarTask.cancel();
-        }
+    public static void detach(Player player) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor != null) {
             anchor.remove();
         }
+        Task actionBarTask = player.getTag(CameraAnchor.actionBarTask);
+        if (actionBarTask != null) {
+            actionBarTask.cancel();
+        }
+        player.removeTag(CameraAnchor.anchor);
+        player.removeTag(CameraAnchor.baseYaw);
+        player.removeTag(CameraAnchor.view);
+        player.removeTag(CameraAnchor.cameraIndex);
     }
 
     private static final class View {

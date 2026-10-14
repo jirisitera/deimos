@@ -27,25 +27,21 @@ public class SkinResourcePackServer {
     private HttpServer httpServer;
 
     public SkinResourcePackServer() {
-        this("0.0.0.0", DEFAULT_PORT, new SkinFetcher());
+        this.bindHost = "0.0.0.0";
+        this.port = DEFAULT_PORT;
+        this.skinFetcher = new SkinFetcher();
+        try {
+            start();
+        } catch (Exception e) {
+            Eris.LOGGER.error("Failed to start skin resource pack server", e);
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
-    public SkinResourcePackServer(String bindHost, int port, SkinFetcher skinFetcher) {
-        this.bindHost = bindHost;
-        this.port = port;
-        this.skinFetcher = skinFetcher;
-    }
-
-    /**
-     * Generates a deterministic UUID for a player's resource pack.
-     */
     public static UUID getPackIdForPlayer(UUID playerUuid) {
         return UUID.nameUUIDFromBytes(("eris-skin-" + playerUuid).getBytes());
     }
 
-    /**
-     * Starts the embedded HTTP server to serve resource packs.
-     */
     public synchronized void start() throws IOException {
         if (httpServer != null) {
             return;
@@ -57,9 +53,6 @@ public class SkinResourcePackServer {
         Eris.LOGGER.info("Resource pack HTTP server started on {}:{}", bindHost, getPort());
     }
 
-    /**
-     * Stops the HTTP server.
-     */
     public synchronized void stop() {
         if (httpServer != null) {
             httpServer.stop(0);
@@ -68,9 +61,6 @@ public class SkinResourcePackServer {
         }
     }
 
-    /**
-     * Handles HTTP requests for resource pack downloads.
-     */
     private void handlePackRequest(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
         if (!"GET".equalsIgnoreCase(method) && !"HEAD".equalsIgnoreCase(method)) {
@@ -119,12 +109,6 @@ public class SkinResourcePackServer {
         exchange.close();
     }
 
-    /**
-     * Generates, packages, hosts, and sends the skin resource pack to the player.
-     * Intended to be called during the configuration phase (AsyncPlayerConfigurationEvent).
-     *
-     * @param player The player to send the pack to.
-     */
     public void sendTo(Player player) {
         try {
             byte[] skinBytes = skinFetcher.fetchSkinPng(player);
@@ -151,9 +135,6 @@ public class SkinResourcePackServer {
         }
     }
 
-    /**
-     * Resolves the hostname/IP that the client used to connect to the server.
-     */
     public String resolveHost(Player player) {
         if (player.getPlayerConnection() instanceof PlayerSocketConnection socketConnection) {
             String serverAddress = socketConnection.getServerAddress();
@@ -167,9 +148,6 @@ public class SkinResourcePackServer {
         return "127.0.0.1";
     }
 
-    /**
-     * Cleans up stored pack and cached skin when a player leaves.
-     */
     public void removePack(UUID playerUuid) {
         UUID packId = getPackIdForPlayer(playerUuid);
         hostedPacks.remove(packId);

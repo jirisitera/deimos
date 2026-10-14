@@ -1,5 +1,6 @@
-package com.japicraft;
+package com.japicraft.instance;
 
+import com.japicraft.Eris;
 import net.hollowcube.schem.Schematic;
 import net.hollowcube.schem.reader.SchematicReader;
 import net.kyori.adventure.text.Component;
@@ -19,7 +20,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StructureLoader {
+public final class StructureLoader {
     private static final float[][] rotations = new float[][]{
         // computers
         new float[]{0.0F, 0.4226F, 0.0F, 0.9063F},
@@ -48,7 +49,6 @@ public class StructureLoader {
     private final List<Entity> entities = new ArrayList<>();
 
     public static void load(ClassLoader loader, String path, InstanceContainer instance) {
-
         instance.loadChunk(0, 0);
         instance.loadChunk(1, 0);
         instance.loadChunk(0, 1);
@@ -60,7 +60,7 @@ public class StructureLoader {
             }
             byte[] data = stream.readAllBytes();
             Schematic structure = SchematicReader.structure().read(data);
-            structure.createBatch().apply(instance, 0, 10, 0, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
+            structure.createBatch().apply(instance, 1, 10, 1, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

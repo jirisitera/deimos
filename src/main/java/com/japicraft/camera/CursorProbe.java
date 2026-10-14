@@ -1,20 +1,19 @@
-package com.japicraft;
+package com.japicraft.camera;
 
+import com.japicraft.Eris;
 import net.minestom.server.color.Color;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.tag.Tag;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-final class CursorProbe {
+public final class CursorProbe {
     private static final String ITEM_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "ui_probe";
     private static final Color BUFFER_COLOR = new Color(91, 126, 209);
-    private final Map<UUID, ProbeState> states = new HashMap<>();
+    private static final Tag<ProbeState> TAG = Tag.Transient("cursorProbe");
 
     private static ItemStack createProbe(int yaw, int pitch) {
         return ItemStack.of(Material.ECHO_SHARD).withItemModel(ITEM_MODEL).withCustomModelData(List.of(), List.of(), List.of(), List.of(
@@ -31,16 +30,17 @@ final class CursorProbe {
         return encodeAngle(yaw + 180.0F, 360.0F);
     }
 
-    public void update(Player player) {
+    public static void update(Player player) {
         int yaw = encodeYaw(player.getPosition().yaw());
         int pitch = encodeAngle(player.getPosition().pitch() + 90.0F, 180.0F);
         int key = (yaw << 16) | pitch;
-        ProbeState previous = states.get(player.getUuid());
+
+        ProbeState previous = player.getTag(CursorProbe.TAG);
         if (previous != null && previous.key == key && player.getEquipment(EquipmentSlot.OFF_HAND) == previous.item) {
             return;
         }
         ItemStack item = previous != null && previous.key == key ? previous.item : createProbe(yaw, pitch);
-        states.put(player.getUuid(), new ProbeState(key, item));
+        player.setTag(CursorProbe.TAG, new ProbeState(key, item));
 
         if (player.getEquipment(EquipmentSlot.OFF_HAND) != item) {
             player.getInventory().clear();
