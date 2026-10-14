@@ -1,8 +1,0 @@
-drone1.ogg  "Searching" by yd, opengameart.org/content/searching, CC0
-drone2.ogg  "Dream 2 Ambience" by TokyoGeisha, opengameart.org/node/22080, CC0
-hum.ogg     "Abandoned passages (horror ambience loop)" by congusbongus, opengameart.org/content/abandoned-passages-horror-ambience-loop, CC0
-creak.ogg   "Creaky Door Hinge Spooky", opengameart.org/content/creaky-door-hinge-spooky, CC0
-groan*.ogg, bang*.ogg  "27 Metal Audio Samples" by Black Lodge Games, opengameart.org/content/27-metal-audio-samples-sfx, CC0
-rain.ogg   "Rain (loopable)" by Ylmir, opengameart.org/content/rain-loopable, CC0, low passed to sound like it is behind the walls
-strike1.ogg "Rain + Long Thunder", opengameart.org/content/rain-long-thunder, CC0, low passed with echo
-strike2-6.ogg "rain and thunders" (Dark Rainy Night), opengameart.org/content/rain-and-thunders, CC0, cut, low passed with echo

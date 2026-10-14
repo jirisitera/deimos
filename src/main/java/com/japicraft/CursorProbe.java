@@ -12,43 +12,28 @@ import java.util.Map;
 import java.util.UUID;
 
 final class CursorProbe {
-    private static final String ITEM_MODEL = "twentyone:ui_probe";
-
+    private static final String ITEM_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "ui_probe";
+    private static final Color BUFFER_COLOR = new Color(91, 126, 209);
     private final Map<UUID, ProbeState> states = new HashMap<>();
 
     private static ItemStack createProbe(int yaw, int pitch) {
-        List<net.kyori.adventure.util.RGBLike> colors = List.of(
-            rgb(yaw >>> 8, yaw & 0xff, pitch >>> 8),
-            rgb(pitch & 0xff, 91, 126),
-            rgb(91, 126, 209),
-            rgb(91, 126, 209),
-            rgb(91, 126, 209),
-            rgb(91, 126, 209),
-            rgb(91, 126, 209),
-            rgb(91, 126, 209)
-        );
-        return ItemStack.of(Material.PAPER).withItemModel(ITEM_MODEL).withCustomModelData(List.of(), List.of(), List.of(), colors);
-    }
-
-    private static Color rgb(int red, int green, int blue) {
-        return new Color(red, green, blue);
+        return ItemStack.of(Material.ECHO_SHARD).withItemModel(ITEM_MODEL).withCustomModelData(List.of(), List.of(), List.of(), List.of(
+            new Color(yaw >>> 8, yaw & 0xFF, pitch >>> 8), new Color(pitch & 0xFF, 91, 126),
+            BUFFER_COLOR, BUFFER_COLOR, BUFFER_COLOR, BUFFER_COLOR, BUFFER_COLOR, BUFFER_COLOR
+        ));
     }
 
     private static int encodeAngle(float angle, float fullTurn) {
-        return Math.round(Math.clamp(angle, 0.0f, fullTurn) / fullTurn * 65535.0f);
+        return Math.round(Math.clamp(angle, 0.0F, fullTurn) / fullTurn * 65535.0F);
     }
 
     private static int encodeYaw(float yaw) {
-        return encodeAngle(yaw + 180.0f, 360.0f);
+        return encodeAngle(yaw + 180.0F, 360.0F);
     }
 
-    void install(Player player) {
-        update(player);
-    }
-
-    void update(Player player) {
+    public void update(Player player) {
         int yaw = encodeYaw(player.getPosition().yaw());
-        int pitch = encodeAngle(player.getPosition().pitch() + 90.0f, 180.0f);
+        int pitch = encodeAngle(player.getPosition().pitch() + 90.0F, 180.0F);
         int key = (yaw << 16) | pitch;
         ProbeState previous = states.get(player.getUuid());
         if (previous != null && previous.key == key && player.getEquipment(EquipmentSlot.OFF_HAND) == previous.item) {
@@ -56,7 +41,9 @@ final class CursorProbe {
         }
         ItemStack item = previous != null && previous.key == key ? previous.item : createProbe(yaw, pitch);
         states.put(player.getUuid(), new ProbeState(key, item));
+
         if (player.getEquipment(EquipmentSlot.OFF_HAND) != item) {
+            player.getInventory().clear();
             player.setEquipment(EquipmentSlot.OFF_HAND, item);
         }
     }

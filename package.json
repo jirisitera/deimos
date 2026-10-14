@@ -1,0 +1,10 @@
+{
+  "name": "eris",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write \"assets/**/*.json\" pack.mcmeta"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

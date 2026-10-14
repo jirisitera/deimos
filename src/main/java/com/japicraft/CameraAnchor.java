@@ -23,10 +23,10 @@ final class CameraAnchor {
     private static final float SMOOTHING = 0.16f;
     private static final Pos[] CAMERA_POSITIONS = {
         Eris.SPAWN.add(0, 1.75, -0.25),
-        new Pos(1.4375, 13.925, 1.375, -25, 25),
-        new Pos(15.53515625, 13.925, 1.41796875, 25, 25),
-        new Pos(1.479736328125, 13.925, 13.46142578125, -35, 25),
-        new Pos(15.54638671875, 13.925, 13.45458984375, 35, 25)
+        new Pos(1.4375, 13.925, 1.375, -25.0F, 25.0F),
+        new Pos(15.53515625, 13.925, 1.41796875, 25.0F, 25.0F),
+        new Pos(1.479736328125, 13.925, 13.46142578125, -35.0F, 25.0F),
+        new Pos(15.54638671875, 13.925, 13.45458984375, 35.0F, 25.0F)
     };
     private final Map<UUID, Entity> anchors = new HashMap<>();
     private final Map<UUID, Float> baseYaws = new HashMap<>();
@@ -35,27 +35,27 @@ final class CameraAnchor {
     private final Map<UUID, Task> actionBarTasks = new HashMap<>();
 
     private static float ease(float current, float target) {
-        float progress = SMOOTHING * SMOOTHING * (3.0f - 2.0f * SMOOTHING);
-        if (Math.abs(target - current) < 0.01f) {
+        float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
+        if (Math.abs(target - current) < 0.01F) {
             return target;
         }
         return current + (target - current) * progress;
     }
 
     private static float unwrapDelta(float delta) {
-        if (delta > 180.0f) {
-            return delta - 360.0f;
+        if (delta > 180.0F) {
+            return delta - 360.0F;
         }
-        if (delta < -180.0f) {
-            return delta + 360.0f;
+        if (delta < -180.0F) {
+            return delta + 360.0F;
         }
         return delta;
     }
 
     private static void sendCameraActionBar(Player player, int currentIndex) {
         Component message = Component.text("Cameras: ", NamedTextColor.WHITE);
-        for (int index = 0; index < CAMERA_POSITIONS.length; index++) {
-            if (index > 0) {
+        for (int index = 1; index < CAMERA_POSITIONS.length; index++) {
+            if (index > 1) {
                 message = message.append(Component.space());
             }
 
@@ -70,6 +70,26 @@ final class CameraAnchor {
             message = message.append(cameraId);
         }
         player.sendActionBar(message);
+    }
+
+    private void showCameraActionBar(Player player, UUID playerId, int currentIndex) {
+        sendCameraActionBar(player, currentIndex);
+        if (actionBarTasks.containsKey(playerId)) {
+            return;
+        }
+        actionBarTasks.put(playerId, player.scheduler().scheduleTask(
+            () -> sendCameraActionBar(player, cameraIndexes.get(playerId)),
+            TaskSchedule.tick(1),
+            TaskSchedule.tick(20)
+        ));
+    }
+
+    private void hideCameraActionBar(Player player, UUID playerId) {
+        Task actionBarTask = actionBarTasks.remove(playerId);
+        if (actionBarTask != null) {
+            actionBarTask.cancel();
+        }
+        player.sendActionBar(Component.empty());
     }
 
     void attach(Player player, Instance instance) {
@@ -93,8 +113,6 @@ final class CameraAnchor {
             player.spectate(display);
             display.addPassenger(player);
         });
-        sendCameraActionBar(player, 0);
-        actionBarTasks.put(playerId, player.scheduler().scheduleTask(() -> sendCameraActionBar(player, cameraIndexes.get(playerId)), TaskSchedule.tick(1), TaskSchedule.tick(20)));
     }
 
     int nextCamera(Player player) {
@@ -112,22 +130,20 @@ final class CameraAnchor {
         baseYaws.put(playerId, cameraPosition.yaw());
         views.put(playerId, new View(cameraPosition.yaw(), cameraPosition.pitch()));
 
-        anchor.editEntityMeta(ItemDisplayMeta.class, meta -> {
-            meta.setPosRotInterpolationDuration(0);
-        });
+        anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(0));
 
         anchor.teleport(cameraPosition);
-        anchor.setView(cameraPosition.yaw(), cameraPosition.pitch());
 
         if (nextIndex == 0) {
             anchor.scheduler().scheduleTask(() -> {
-                anchor.editEntityMeta(ItemDisplayMeta.class, meta -> {
-                    meta.setPosRotInterpolationDuration(3);
-                });
+                // set smoothing for the main camera position
+                anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(3));
             }, TaskSchedule.tick(3), TaskSchedule.stop());
-        }
 
-        sendCameraActionBar(player, nextIndex);
+            hideCameraActionBar(player, playerId);
+        } else {
+            showCameraActionBar(player, playerId, nextIndex);
+        }
         return nextIndex;
     }
 
@@ -146,8 +162,19 @@ final class CameraAnchor {
         view.yaw = yaw;
         view.pitch = pitch;
 
-        anchor.setView(view.yaw, view.pitch);
         anchor.teleport(anchor.getPosition().withView(view.yaw, view.pitch));
+    }
+
+    Pos getCameraPosition(Player player) {
+        Entity anchor = anchors.get(player.getUuid());
+        return anchor == null ? null : anchor.getPosition();
+    }
+
+    boolean isMainCamera(Player player) {
+        if (getCameraPosition(player) == null) {
+            return false;
+        }
+        return cameraIndexes.getOrDefault(player.getUuid(), -1) == 0;
     }
 
     void updateTarget(Player player, Pos position) {

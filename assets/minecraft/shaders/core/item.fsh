@@ -4,12 +4,9 @@
 #include <minecraft:fog.glsl>
 #include <minecraft:dynamictransforms.glsl>
 #include <minecraft:oit.glsl>
-#include <twentyone:pbr.glsl>
-#include <twentyone:mesh.glsl>
-#define _a 6
-#define _b -300
-#define _c -310
+#include <eris:pbr.glsl>
 #define _d -500
+#define _b -300
 uniform sampler2D Sampler0;
 #ifdef GLINT
 uniform sampler2D GlintSampler;
@@ -53,31 +50,11 @@ vec4 j(vec4 A) {
 }
 #endif
 void main() {
-    if(pbrMark==_o||pbrMark==_q) {
-        #ifdef OIT_ALPHA_ONLY
-        executeAlphaOnlyPhase(gl_FragCoord.z,1.0);
-        #else
-        vec3 D=floor(Gd(Sampler0,texCoord0,meshLocal,GameTime,pbrMark==_q)*254.0);
-        D=vec3(D.r-mod(D.r,2.0)+1.0,D.g-mod(D.g,2.0),D.b-mod(D.b,2.0)+1.0);
-        fragColor=vec4(D/255.0,1.0);
-        #endif
-        return;
-    }
     if(pbrMark==_d) {
         #ifdef OIT_ALPHA_ONLY
         discard;
         #else
         fragColor=vec4(meshLocal,1.0);
-        return;
-        #endif
-    }
-    if(pbrMark==_c) {
-        #ifdef OIT_ALPHA_ONLY
-        discard;
-        #else
-        float E=smoothstep(0.0,0.1,meshLocal.x)*smoothstep(1.0,0.85,meshLocal.x)*(1.0-abs(faceUv.y*2.0-1.0)*0.6);
-        vec3 F=vec3(0.05,0.056,0.07)*(0.6+0.4*meshLocal.z)+_k*Ca(GameTime)*0.7;
-        fragColor=vec4(F*E,1.0);
         return;
         #endif
     }
@@ -98,31 +75,6 @@ void main() {
         fragColor=vec4(min(vec3(1.0,0.92,0.78)*K*L*M,1.0),1.0);
         return;
         #endif
-    }
-    if(pbrMark<=-100) {
-        #ifdef OIT_ALPHA_ONLY
-        executeAlphaOnlyPhase(gl_FragCoord.z,1.0);
-        #else
-        fragColor=vec4(clamp(ta(-100-pbrMark,GameTime)*1.6,0.0,1.0),1.0);
-        #endif
-        return;
-    }
-    if(pbrMark==_a) {
-        if(texture(Sampler0,texCoord0).a<0.5)discard;
-        #ifdef OIT_ALPHA_ONLY
-        executeAlphaOnlyPhase(gl_FragCoord.z,1.0);
-        #else
-        fragColor=vec4(Bc(Sampler0,texCoord0,pbrPos,normalize(pbrNormal),faceUv),1.0);
-        #endif
-        return;
-    }
-    if(pbrMark==_p) {
-        #ifdef OIT_ALPHA_ONLY
-        executeAlphaOnlyPhase(gl_FragCoord.z,1.0);
-        #else
-        fragColor=vec4(Ec(Sampler0,texCoord0,pbrPos,normalize(pbrNormal)),1.0);
-        #endif
-        return;
     }
     if(pbrMark>0) {
         if(texture(Sampler0,texCoord0).a<0.5)discard;

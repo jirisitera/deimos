@@ -6,7 +6,6 @@
 #include <minecraft:projection.glsl>
 #include <minecraft:sample_lightmap.glsl>
 #include <minecraft:globals.glsl>
-#include <twentyone:mesh.glsl>
 layout(location=0)in vec3 Position;
 layout(location=1)in vec4 Color;
 layout(location=2)in vec2 UV0;
@@ -38,7 +37,6 @@ layout(location=9)out vec3 pbrNormal;
 layout(location=11)out vec3 meshLocal;
 layout(location=12)out vec2 faceUv;
 #define _b -300
-#define _c -310
 #define _d -500
 #define _e 19
 void main() {
@@ -52,7 +50,6 @@ void main() {
     meshLocal=vec3(0.0);
     const vec2 P[4]=vec2[](vec2(0.0,0.0),vec2(0.0,1.0),vec2(1.0,1.0),vec2(1.0,0.0));
     faceUv=P[gl_VertexIndex%4];
-    Ma(Sampler0,UV0,Position,Normal,Color,gl_VertexIndex%4,pbrPos,pbrNormal,O,pbrMark,meshLocal);
     if(O.x>=0.0)gl_Position=ProjMat*ModelViewMat*vec4(pbrPos,1.0);
     ivec4 Q=ivec4(round(texelFetch(Sampler0,ivec2(UV0*vec2(textureSize(Sampler0,0))),0)*255.0));
     if(Q.r==252&&Q.g==99&&Q.b<8&&Q.a==255) {
@@ -79,23 +76,6 @@ void main() {
         pbrPos=da;
         meshLocal=vec3(aa/2.3,ea,T.b);
         pbrMark=_b;
-    }
-    if(N.g==254&&N.b==7) {
-        vec3 T=texelFetch(Sampler0,ivec2(UV0*vec2(textureSize(Sampler0,0))),0).rgb;
-        float U=GameTime*1200.0;
-        float ia=fract(T.g*7.31);
-        vec2 ja;
-        if(T.r<0.85)ja=vec2(T.g<0.5?-mix(2.8,4.8,ia):mix(2.4,4.8,ia),mix(-8.3,7.7,T.r/0.85));
-        else ja=vec2(mix(-2.0,1.6,ia),T.g<0.5?-mix(9.0,10.5,fract(T.r*13.7)):mix(8.4,10.5,fract(T.r*13.7)));
-        float ka=8.0+T.b*3.0;
-        float la=13.0-mod(T.b*97.0+U*ka,13.5);
-        vec3 da=Position+vec3(ja.x,la,ja.y);
-        vec3 ma=normalize(cross(vec3(0.0,1.0,0.0),-da));
-        vec3 S=ma*(1.0-faceUv.x*2.0)*0.008+vec3(0.0,faceUv.y*2.0-1.0,0.0)*(0.22+T.g*0.12);
-        gl_Position=ProjMat*ModelViewMat*vec4(da+S,1.0);
-        pbrPos=da;
-        meshLocal=vec3(la/13.0,T.r,T.b);
-        pbrMark=_c;
     }
     #ifndef OIT_ALPHA_ONLY
     sphericalVertexDistance=fog_spherical_distance(Position);
