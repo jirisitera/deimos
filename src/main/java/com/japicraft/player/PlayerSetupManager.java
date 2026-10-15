@@ -30,7 +30,10 @@ public final class PlayerSetupManager {
             player.sendPacket(new PostEffectsPacket(List.of(Eris.HUD)));
             player.setInvisible(true);
             CursorProbe.update(player);
-            instanceManager.addPlayer(player);
+
+            if (event.isFirstSpawn()) {
+                instanceManager.addPlayer(player);
+            }
         });
         // leave event
         MinecraftServer.getGlobalEventHandler().addListener(PlayerDisconnectEvent.class, event -> {

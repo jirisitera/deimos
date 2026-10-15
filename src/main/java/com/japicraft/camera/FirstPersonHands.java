@@ -1,6 +1,7 @@
 package com.japicraft.camera;
 
 import com.japicraft.Eris;
+import com.japicraft.player.ClientView;
 import com.japicraft.skin.SkinFetcher;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -20,8 +21,9 @@ public final class FirstPersonHands {
     private static final double FORWARD_OFFSET = 0.15;
     private static final double SIDE_OFFSET = 0.35;
     private static final double TABLE_HEIGHT_OFFSET = 0.25;
-    private static final float RIGHT_YAW_ROTATION = 45.0F;
-    private static final float RIGHT_PITCH_ROTATION = 15.0F;
+    private static final float RIGHT_YAW_ROTATION = 22.5F;
+    private static final float RIGHT_PITCH_ROTATION = 7.5F;
+    private static final float SMOOTHING = 0.16f;
     private static final float[] LEFT_ROTATION = rotationFromDegrees(75.0F, 180.0F, 5.0F);
     private static final float[] RIGHT_ROTATION = rotationFromDegrees(75.0F, 175.0F, 0.0F);
     private static final Tag<Hands> TAG = Tag.Transient("firstPersonHands");
@@ -73,14 +75,16 @@ public final class FirstPersonHands {
         return new Pos(camera.x() - SIDE_OFFSET, camera.y() + TABLE_HEIGHT_OFFSET, camera.z() + FORWARD_OFFSET);
     }
 
-    private static float[] rightHandRotation(float yaw, float pitch) {
-        float yawOffset = (float) Math.clamp(-angleDelta(yaw) / 180.0 * RIGHT_YAW_ROTATION, -RIGHT_YAW_ROTATION, RIGHT_YAW_ROTATION);
-        float pitchOffset = (float) Math.clamp(-pitch / 90.0 * RIGHT_PITCH_ROTATION, -RIGHT_PITCH_ROTATION, RIGHT_PITCH_ROTATION);
-        return rotationFromDegrees(75.0F + pitchOffset, 180.0F + yawOffset, 0.0F);
+    private static float ease(float current, float target) {
+        float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
+        if (Math.abs(target - current) < 0.01F) {
+            return target;
+        }
+        return current + (target - current) * progress;
     }
 
-    private static double angleDelta(double angle) {
-        return angle - Math.floor((angle + 180.0) / 360.0) * 360.0;
+    private static float[] rightHandRotation(float yawOffset, float pitchOffset) {
+        return rotationFromDegrees(75.0F + pitchOffset, 180.0F + yawOffset, 0.0F);
     }
 
     public static void attach(Player player) {
@@ -90,7 +94,10 @@ public final class FirstPersonHands {
         Entity right = createHand(RIGHT_HAND, slim);
         Entity body = createBody();
 
-        player.setTag(FirstPersonHands.TAG, new Hands(left, right));
+        ClientView.View view = updateRightHand(player);
+
+        right.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setLeftRotation(rightHandRotation(view.yaw(), view.pitch())));
+        player.setTag(FirstPersonHands.TAG, new Hands(left, right, view.yaw(), view.pitch()));
 
         Pos camera = player.getPosition();
         Instance instance = player.getInstance();
@@ -100,13 +107,31 @@ public final class FirstPersonHands {
         body.setInstance(instance, camera);
     }
 
+    private static ClientView.View updateRightHand(Player player) {
+        CursorProbe.ScreenPosition cursor = CursorProbe.screenPosition(player);
+        float normX = (cursor.x() - 0.5F) * 2.0F;
+        float normY = (cursor.y() - 0.5F) * 2.0F;
+        return new ClientView.View(-normX * RIGHT_YAW_ROTATION, -normY * RIGHT_PITCH_ROTATION);
+    }
+
     public static void update(Player player) {
         Hands pair = player.getTag(FirstPersonHands.TAG);
         if (pair == null) {
             return;
         }
+        ClientView.View view = updateRightHand(player);
+
+        float yawOffset = ease(pair.currentYawOffset, view.yaw());
+        float pitchOffset = ease(pair.currentPitchOffset, view.pitch());
+        if (yawOffset == pair.currentYawOffset && pitchOffset == pair.currentPitchOffset) {
+            return;
+        }
+
+        pair.currentYawOffset = yawOffset;
+        pair.currentPitchOffset = pitchOffset;
+
         pair.right.editEntityMeta(ItemDisplayMeta.class, meta -> {
-            meta.setLeftRotation(rightHandRotation(player.getPosition().yaw(), player.getPosition().pitch()));
+            meta.setLeftRotation(rightHandRotation(yawOffset, pitchOffset));
             meta.setTransformationInterpolationStartDelta(0);
         });
     }
@@ -121,6 +146,17 @@ public final class FirstPersonHands {
         player.removeTag(FirstPersonHands.TAG);
     }
 
-    private record Hands(Entity left, Entity right) {
+    private static final class Hands {
+        final Entity left;
+        final Entity right;
+        float currentYawOffset;
+        float currentPitchOffset;
+
+        Hands(Entity left, Entity right, float currentYawOffset, float currentPitchOffset) {
+            this.left = left;
+            this.right = right;
+            this.currentYawOffset = currentYawOffset;
+            this.currentPitchOffset = currentPitchOffset;
+        }
     }
 }

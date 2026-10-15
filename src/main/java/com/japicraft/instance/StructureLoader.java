@@ -60,7 +60,7 @@ public final class StructureLoader {
             }
             byte[] data = stream.readAllBytes();
             Schematic structure = SchematicReader.structure().read(data);
-            structure.createBatch().apply(instance, 1, 10, 1, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
+            structure.createBatch().apply(instance, 0, 10, 0, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

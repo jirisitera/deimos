@@ -21,5 +21,6 @@ public class DefaultCamera {
 
     public void addPlayer(Player player) {
         player.spectate(entity);
+        entity.addPassenger(player);
     }
 }

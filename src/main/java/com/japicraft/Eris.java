@@ -34,7 +34,7 @@ public final class Eris {
 
         new PlayerSetupManager().register(instanceManager, packHost);
         new PlayerUpdateManager().register();
-        new PlayerInputManager().register();
+        new PlayerInputManager().register(instanceManager);
         //new GlobalResourcePack().register();
 
         server.start("0.0.0.0", 25565);

@@ -111,7 +111,7 @@ public final class SkinFetcher {
             GameProfile profile = socketConnection.gameProfile();
             if (profile != null) {
                 for (GameProfile.Property property : profile.properties()) {
-                    if ("textures".equals(property.name())) {
+                    if ("textures".equals(property.name()) && property.signature() != null) {
                         PlayerSkin skin = new PlayerSkin(property.value(), property.signature());
                         player.setSkin(skin);
                         return skin;

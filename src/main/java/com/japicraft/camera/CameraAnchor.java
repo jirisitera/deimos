@@ -171,7 +171,7 @@ public final class CameraAnchor {
         return player.getTag(CameraAnchor.cameraIndex) == 0;
     }
 
-    public static void updateTarget(Player player, Pos position) {
+    public static void updateTarget(Player player, float inputYaw, float inputPitch) {
         Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor == null) {
             return;
@@ -188,14 +188,14 @@ public final class CameraAnchor {
             return;
         }
 
-        float yawDelta = position.yaw() - view.inputYaw;
+        float yawDelta = inputYaw - view.inputYaw;
         view.inputYaw += unwrapDelta(yawDelta);
 
         float baseYaw = player.getTag(CameraAnchor.baseYaw);
         float yawOffset = view.inputYaw - baseYaw;
 
         view.targetYaw = baseYaw + Math.clamp(yawOffset, -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
-        view.targetPitch = position.pitch();
+        view.targetPitch = inputPitch;
     }
 
     public static void detach(Player player) {

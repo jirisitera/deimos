@@ -1,6 +1,8 @@
 package com.japicraft.instance;
 
+import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.DefaultCamera;
+import com.japicraft.camera.FirstPersonHands;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -26,11 +28,18 @@ public class InstanceManager {
         defaultCamera.addPlayer(player);
     }
 
-    public void create() {
+    public void create(Player player) {
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
         // generate main structure
         StructureLoader.load(this.getClass().getClassLoader(), "office.nbt", instance);
-        new StructureLoader().spawnAll(instance);
+        StructureLoader loader = new StructureLoader();
+        loader.spawnAll(instance);
+        // move player to instance
+        player.setInstance(instance, InstanceManager.MAIN_SPAWN).thenRun(() -> {
+            CameraAnchor.attach(player);
+            FirstPersonHands.attach(player);
+            loader.activate(player);
+        });
     }
 }
