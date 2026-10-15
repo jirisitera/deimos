@@ -18,6 +18,16 @@ public final class Eris {
     - defender can deter them by closing doors and opening pits - falling into a pit resets them
     - attackers are very slow, and cannot move if the current selected camera can see them (moving will damage them, too much damage will reset them)
 
+    - click any monitor to zoom into it (press SPACE to return)
+    - press SPACE to zoom into main monitor, showing power scheme
+    - (click any camera on the power scheme map to view it)
+    - use A and D to move to side monitors
+        - left monitor shows cameras/cheatsheet
+        - right monitor shows objective/statistics
+    - press A and D to lean, turns you 90 degrees towards either door
+    - attacker has multiple hosts, starts game with a map to choose which to possess
+
+
     */
     public static final String NAMESPACE = "eris";
     public static final String NAMESPACE_SEPARATOR = ":";
