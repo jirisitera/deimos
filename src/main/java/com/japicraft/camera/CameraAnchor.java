@@ -1,6 +1,7 @@
 package com.japicraft.camera;
 
 import com.japicraft.instance.InstanceManager;
+import com.japicraft.player.ClientView;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -18,6 +19,7 @@ import net.minestom.server.timer.TaskSchedule;
 public final class CameraAnchor {
     private static final float MAX_YAW_OFFSET = 90.0f;
     private static final float SMOOTHING = 0.16f;
+    private static final float LEAN_YAW_OFFSET = 90.0f;
     private static final Pos[] CAMERA_POSITIONS = {
         InstanceManager.MAIN_SPAWN.add(0, 1.75, -0.25),
         new Pos(1.4375, 13.925, 1.375, -25.0F, 25.0F),
@@ -32,19 +34,20 @@ public final class CameraAnchor {
     private static final Tag<Task> actionBarTask = Tag.Transient("actionBarTask");
 
     private static float ease(float current, float target) {
+        float delta = unwrapDelta(target - current);
         float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
-        if (Math.abs(target - current) < 0.01F) {
+        if (Math.abs(delta) < 0.01F) {
             return target;
         }
-        return current + (target - current) * progress;
+        return current + delta * progress;
     }
 
     private static float unwrapDelta(float delta) {
-        if (delta > 180.0F) {
-            return delta - 360.0F;
+        while (delta > 180.0F) {
+            delta -= 360.0F;
         }
-        if (delta < -180.0F) {
-            return delta + 360.0F;
+        while (delta < -180.0F) {
+            delta += 360.0F;
         }
         return delta;
     }
@@ -141,6 +144,31 @@ public final class CameraAnchor {
         return nextIndex;
     }
 
+    public static float calculateLeanYaw(Player player) {
+        if (!isMainCamera(player)) {
+            return 0.0f;
+        }
+        boolean left = player.inputs().left();
+        boolean right = player.inputs().right();
+        if (left && !right) {
+            return -LEAN_YAW_OFFSET;
+        } else if (right && !left) {
+            return LEAN_YAW_OFFSET;
+        }
+        return 0.0f;
+    }
+
+    public static void updateInput(Player player) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
+        View view = player.getTag(CameraAnchor.view);
+        if (anchor == null || view == null || !isMainCamera(player)) {
+            return;
+        }
+
+        float baseYaw = player.getTag(CameraAnchor.baseYaw);
+        view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
+    }
+
     public static void update(Player player) {
         Entity anchor = player.getTag(CameraAnchor.anchor);
         View view = player.getTag(CameraAnchor.view);
@@ -148,12 +176,16 @@ public final class CameraAnchor {
             return;
         }
 
+        if (isMainCamera(player)) {
+            updateInput(player);
+        }
+
         float yaw = ease(view.yaw, view.targetYaw);
         float pitch = ease(view.pitch, view.targetPitch);
         if (yaw == view.yaw && pitch == view.pitch) {
             return;
         }
-        view.yaw = yaw;
+        view.yaw = unwrapDelta(yaw);
         view.pitch = pitch;
 
         anchor.teleport(anchor.getPosition().withView(view.yaw, view.pitch));
@@ -171,7 +203,11 @@ public final class CameraAnchor {
         return player.getTag(CameraAnchor.cameraIndex) == 0;
     }
 
-    public static void updateTarget(Player player, float inputYaw, float inputPitch) {
+    public static float getYawOffset(Player player) {
+        return Math.clamp(ClientView.mouseYaw(player), -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
+    }
+
+    public static void updateTarget(Player player, float inputPitch) {
         Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor == null) {
             return;
@@ -188,13 +224,8 @@ public final class CameraAnchor {
             return;
         }
 
-        float yawDelta = inputYaw - view.inputYaw;
-        view.inputYaw += unwrapDelta(yawDelta);
-
         float baseYaw = player.getTag(CameraAnchor.baseYaw);
-        float yawOffset = view.inputYaw - baseYaw;
-
-        view.targetYaw = baseYaw + Math.clamp(yawOffset, -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
+        view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
         view.targetPitch = inputPitch;
     }
 
@@ -216,14 +247,12 @@ public final class CameraAnchor {
     private static final class View {
         private float yaw;
         private float pitch;
-        private float inputYaw;
         private float targetYaw;
         private float targetPitch;
 
         private View(float yaw, float pitch) {
             this.yaw = yaw;
             this.pitch = pitch;
-            this.inputYaw = yaw;
             this.targetYaw = yaw;
             this.targetPitch = pitch;
         }

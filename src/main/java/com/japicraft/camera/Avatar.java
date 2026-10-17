@@ -15,9 +15,10 @@ import net.minestom.server.tag.Tag;
 
 import java.util.Objects;
 
-public final class FirstPersonHands {
+public final class Avatar {
     private static final String LEFT_HAND = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "arm_left";
     private static final String RIGHT_HAND = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "arm_right";
+    private static final String TORSO = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "torso";
     private static final double FORWARD_OFFSET = 0.15;
     private static final double SIDE_OFFSET = 0.35;
     private static final double TABLE_HEIGHT_OFFSET = 0.25;
@@ -43,7 +44,8 @@ public final class FirstPersonHands {
     private static Entity createBody() {
         Entity hand = new Entity(EntityType.ITEM_DISPLAY);
         hand.editEntityMeta(ItemDisplayMeta.class, meta -> {
-            meta.setItemStack(ItemStack.of(Material.ECHO_SHARD));
+            meta.setItemStack(ItemStack.of(Material.ECHO_SHARD).withItemModel(Avatar.TORSO));
+            meta.setTranslation(new Pos(0.0, 0.3, 0));
             meta.setHasNoGravity(true);
         });
         return hand;
@@ -97,25 +99,25 @@ public final class FirstPersonHands {
         ClientView.View view = updateRightHand(player);
 
         right.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setLeftRotation(rightHandRotation(view.yaw(), view.pitch())));
-        player.setTag(FirstPersonHands.TAG, new Hands(left, right, view.yaw(), view.pitch()));
+        player.setTag(Avatar.TAG, new Hands(left, right, view.yaw(), view.pitch()));
 
         Pos camera = player.getPosition();
         Instance instance = player.getInstance();
 
         left.setInstance(instance, leftHandPosition(camera));
         right.setInstance(instance, rightHandPosition(camera));
-        body.setInstance(instance, camera);
+        body.setInstance(instance, camera.withYaw(180.0F));
     }
 
     private static ClientView.View updateRightHand(Player player) {
         CursorProbe.ScreenPosition cursor = CursorProbe.screenPosition(player);
-        float normX = (cursor.x() - 0.5F) * 2.0F;
-        float normY = (cursor.y() - 0.5F) * 2.0F;
-        return new ClientView.View(-normX * RIGHT_YAW_ROTATION, -normY * RIGHT_PITCH_ROTATION);
+        float normalX = (cursor.x() - 0.5F) * 2.0F;
+        float normalY = (cursor.y() - 0.5F) * 2.0F;
+        return new ClientView.View(-normalX * RIGHT_YAW_ROTATION, -normalY * RIGHT_PITCH_ROTATION);
     }
 
     public static void update(Player player) {
-        Hands pair = player.getTag(FirstPersonHands.TAG);
+        Hands pair = player.getTag(Avatar.TAG);
         if (pair == null) {
             return;
         }
@@ -137,13 +139,13 @@ public final class FirstPersonHands {
     }
 
     public static void detach(Player player) {
-        Hands pair = player.getTag(FirstPersonHands.TAG);
+        Hands pair = player.getTag(Avatar.TAG);
         if (pair == null) {
             return;
         }
         pair.left.remove();
         pair.right.remove();
-        player.removeTag(FirstPersonHands.TAG);
+        player.removeTag(Avatar.TAG);
     }
 
     private static final class Hands {

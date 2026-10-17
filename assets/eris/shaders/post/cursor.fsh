@@ -22,18 +22,33 @@ layout(location = 0) out vec4 fragColor;
 #define _ud 0.15
 bool vg(out vec2 wg) {
   wg = vec2(0.0);
+  ivec2 p0 = ivec2(26, _jd);
+  ivec2 p1 = ivec2(27, _jd);
   if (
     ivec3(round(texelFetch(InSampler, ivec2(28, _jd), 0).rgb * 255.0)) !=
     ivec3(91, 126, 209)
-  )
-    return false;
-  ivec3 X = ivec3(round(texelFetch(InSampler, ivec2(26, _jd), 0).rgb * 255.0));
-  ivec3 Va = ivec3(round(texelFetch(InSampler, ivec2(27, _jd), 0).rgb * 255.0));
+  ) {
+    if (
+      ivec3(round(texelFetch(InSampler, ivec2(2, _e), 0).rgb * 255.0)) !=
+      ivec3(91, 126, 209)
+    )
+      return false;
+    p0 = ivec2(0, _e);
+    p1 = ivec2(1, _e);
+  }
+  ivec3 X = ivec3(round(texelFetch(InSampler, p0, 0).rgb * 255.0));
+  ivec3 Va = ivec3(round(texelFetch(InSampler, p1, 0).rgb * 255.0));
   wg = vec2(
     float(X.r * 256 + X.g) / 65535.0 * 360.0 - 180.0,
     float(X.b * 256 + Va.r) / 65535.0 * 180.0 - 90.0
   );
   return true;
+}
+bool mapActive() {
+  return ivec3(round(texelFetch(InSampler, ivec2(40, _e), 0).rgb * 255.0)) ==
+    ivec3(91, 126, 209) &&
+    ivec3(round(texelFetch(InSampler, ivec2(41, _e), 0).rgb * 255.0)) ==
+    ivec3(91, 126, 209);
 }
 float xg(vec2 Ya) {
   const int hd[16] = int[](
@@ -106,6 +121,40 @@ void main() {
   }
   vec2 Ke = vec2(0.5 + dg.x * 0.5, 0.5 + dg.y * 0.5);
   vec2 te = vec2(gl_FragCoord.x, ga.y - gl_FragCoord.y);
+  if (mapActive()) {
+    vec2 mapMin = ga * 0.25;
+    vec2 mapSize = ga * 0.5;
+    vec2 mapMax = mapMin + mapSize;
+    if (
+      te.x >= mapMin.x &&
+      te.x <= mapMax.x &&
+      te.y >= mapMin.y &&
+      te.y <= mapMax.y
+    ) {
+      Nd = vec3(0.0);
+      float dotRadius = max(2.0, round(ga.y / 135.0));
+      for (int i = 0; i < 16; i++) {
+        ivec3 posPixel = ivec3(
+          round(texelFetch(InSampler, ivec2(8 + i * 2, _e), 0).rgb * 255.0)
+        );
+        if (posPixel == ivec3(255, 255, 255)) continue;
+        int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
+        int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
+        vec2 dotPos =
+          mapMin + vec2(float(rawX), float(rawY)) / 4094.0 * mapSize;
+        float dist = length(te - dotPos);
+        if (dist <= dotRadius) {
+          vec3 dotColor = texelFetch(
+            InSampler,
+            ivec2(8 + i * 2 + 1, _e),
+            0
+          ).rgb;
+          float alpha = 1.0 - smoothstep(dotRadius - 1.0, dotRadius, dist);
+          Nd = mix(Nd, dotColor, alpha);
+        }
+      }
+    }
+  }
   if (Bg) {
     vec2 Cg = Ke * ga;
     float Dg = max(1.0, round(ga.y / 540.0));

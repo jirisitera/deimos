@@ -1,12 +1,14 @@
 package com.japicraft.player;
 
-import com.japicraft.Eris;
+import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.CursorProbe;
-import com.japicraft.camera.FirstPersonHands;
+import com.japicraft.camera.MapProbe;
 import com.japicraft.instance.InstanceManager;
+import com.japicraft.server.PostEffect;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.color.Color;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -27,19 +29,27 @@ public final class PlayerSetupManager {
         // join event
         MinecraftServer.getGlobalEventHandler().addListener(PlayerSpawnEvent.class, event -> {
             Player player = event.getPlayer();
-            player.sendPacket(new PostEffectsPacket(List.of(Eris.HUD)));
+            player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD)));
             player.setInvisible(true);
             CursorProbe.update(player);
+            MapProbe.show(
+                player,
+                new MapProbe.Dot(0.5F, 0.5F),
+                new MapProbe.Dot(0.35F, 0.4F),
+                new MapProbe.Dot(0.65F, 0.4F),
+                new MapProbe.Dot(0.35F, 0.65F, new Color(255, 80, 80)),
+                new MapProbe.Dot(0.65F, 0.65F, new Color(80, 200, 255))
+            );
 
             if (event.isFirstSpawn()) {
-                instanceManager.addPlayer(player);
+                instanceManager.addToDefault(player);
             }
         });
         // leave event
         MinecraftServer.getGlobalEventHandler().addListener(PlayerDisconnectEvent.class, event -> {
             Player player = event.getPlayer();
             CameraAnchor.detach(player);
-            FirstPersonHands.detach(player);
+            Avatar.detach(player);
             packHost.removePack(player.getUuid());
         });
     }

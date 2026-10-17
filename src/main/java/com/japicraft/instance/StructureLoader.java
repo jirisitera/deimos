@@ -38,10 +38,10 @@ public final class StructureLoader {
         new Pos(8.4375, 12.5, 6.1875),
         new Pos(7.125, 12.5, 5.875),
         // cameras
-        new Pos(1.4375, 14.625, 1.375),
-        new Pos(15.53515625, 14.625, 1.41796875),
-        new Pos(1.479736328125, 14.6875, 13.46142578125),
-        new Pos(15.54638671875, 14.625, 13.45458984375)
+        new Pos(1.4375, 13.925, 1.375),
+        new Pos(15.53515625, 13.925, 1.41796875),
+        new Pos(1.479736328125, 13.925, 13.46142578125),
+        new Pos(15.54638671875, 13.925, 13.45458984375)
     };
     private static final ItemStack DEACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer");
     private static final ItemStack ACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer_on");

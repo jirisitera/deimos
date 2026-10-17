@@ -1,8 +1,13 @@
 package com.japicraft.instance;
 
+import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.DefaultCamera;
-import com.japicraft.camera.FirstPersonHands;
+import com.japicraft.server.Font;
+import com.japicraft.server.Notification;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.ShadowColor;
+import net.kyori.adventure.title.Title;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -24,7 +29,7 @@ public class InstanceManager {
         return defaultInstance.get();
     }
 
-    public void addPlayer(Player player) {
+    public void addToDefault(Player player) {
         defaultCamera.addPlayer(player);
     }
 
@@ -38,8 +43,9 @@ public class InstanceManager {
         // move player to instance
         player.setInstance(instance, InstanceManager.MAIN_SPAWN).thenRun(() -> {
             CameraAnchor.attach(player);
-            FirstPersonHands.attach(player);
+            Avatar.attach(player);
             loader.activate(player);
+            Notification.show(player, "Welcome to Eris!");
         });
     }
 }

@@ -12,8 +12,6 @@ import net.minestom.server.tag.Tag;
 import java.util.List;
 
 public final class CursorProbe {
-    public static final int SECTOR_COLUMNS = 5;
-    public static final int SECTOR_ROWS = 4;
     private static final String ITEM_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "ui_probe";
     private static final Color BUFFER_COLOR = new Color(91, 126, 209);
     private static final Tag<ProbeState> TAG = Tag.Transient("cursorProbe");
@@ -34,7 +32,7 @@ public final class CursorProbe {
     }
 
     public static void update(Player player) {
-        int yaw = encodeYaw(ClientView.yaw(player));
+        int yaw = encodeYaw(CameraAnchor.getYawOffset(player));
         int pitch = encodeAngle(ClientView.pitch(player) + 90.0F, 180.0F);
         int key = (yaw << 16) | pitch;
 
@@ -46,7 +44,6 @@ public final class CursorProbe {
         player.setTag(CursorProbe.TAG, new ProbeState(key, item));
 
         if (player.getEquipment(EquipmentSlot.OFF_HAND) != item) {
-            player.getInventory().clear();
             player.setEquipment(EquipmentSlot.OFF_HAND, item);
         }
     }
@@ -59,7 +56,7 @@ public final class CursorProbe {
             yaw = state.key >>> 16;
             pitch = state.key & 0xFFFF;
         } else {
-            yaw = encodeYaw(ClientView.yaw(player));
+            yaw = encodeYaw(CameraAnchor.getYawOffset(player));
             pitch = encodeAngle(ClientView.pitch(player) + 90.0F, 180.0F);
         }
         // decode exactly like the shader: angle in degrees -> clamp(angle / 90, -1, 1) -> 0.5 + v * 0.5
@@ -68,13 +65,6 @@ public final class CursorProbe {
         float x = 0.5F + Math.clamp(yawDegrees / 90.0F, -1.0F, 1.0F) * 0.5F;
         float y = 0.5F + Math.clamp(pitchDegrees / 90.0F, -1.0F, 1.0F) * 0.5F;
         return new ScreenPosition(x, y);
-    }
-
-    public static int sector(Player player) {
-        ScreenPosition position = screenPosition(player);
-        int column = Math.min((int) (position.x() * SECTOR_COLUMNS), SECTOR_COLUMNS - 1);
-        int row = Math.min((int) (position.y() * SECTOR_ROWS), SECTOR_ROWS - 1);
-        return row * SECTOR_COLUMNS + column;
     }
 
     public record ScreenPosition(float x, float y) {

@@ -4,8 +4,8 @@ import com.japicraft.instance.InstanceManager;
 import com.japicraft.player.PlayerInputManager;
 import com.japicraft.player.PlayerSetupManager;
 import com.japicraft.player.PlayerUpdateManager;
+import com.japicraft.queue.MatchQueue;
 import com.japicraft.skin.SkinResourcePackServer;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
@@ -24,7 +24,6 @@ public final class Eris {
     - use A and D to move to side monitors
         - left monitor shows cameras/cheatsheet
         - right monitor shows objective/statistics
-    - press A and D to lean, turns you 90 degrees towards either door
     - attacker has multiple hosts, starts game with a map to choose which to possess
 
 
@@ -32,19 +31,17 @@ public final class Eris {
     public static final String NAMESPACE = "eris";
     public static final String NAMESPACE_SEPARATOR = ":";
     public static final ComponentLogger LOGGER = ComponentLogger.logger(Eris.class);
-    public static final Key HUD = Key.key(NAMESPACE, "hud");
-    public static final Key CAMERA = Key.key(NAMESPACE, "security_camera");
-    public static final Key CAMERA_SWITCH = Key.key(NAMESPACE, "camera_switch");
 
     void main() {
         MinecraftServer server = MinecraftServer.init(new Auth.Online());
 
         InstanceManager instanceManager = new InstanceManager();
         SkinResourcePackServer packHost = new SkinResourcePackServer();
+        MatchQueue queue = new MatchQueue();
 
         new PlayerSetupManager().register(instanceManager, packHost);
         new PlayerUpdateManager().register();
-        new PlayerInputManager().register(instanceManager);
+        new PlayerInputManager().register(instanceManager, queue);
         //new GlobalResourcePack().register();
 
         server.start("0.0.0.0", 25565);

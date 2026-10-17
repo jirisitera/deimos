@@ -9,11 +9,9 @@ layout(location = 0) in vec2 texCoord;
 layout(location = 0) out vec4 fragColor;
 vec3 pg(vec2 Sa) {
   if (Bright < 0.5) return texture(InSampler, Sa).rgb;
-  vec3 F = texelFetch(
-    InSampler,
-    ivec2(Sa * vec2(textureSize(InSampler, 0))),
-    0
-  ).rgb;
+  ivec2 na = ivec2(Sa * vec2(textureSize(InSampler, 0)));
+  if (na.y >= 14 && na.y <= 21 && na.x < 48) return vec3(0.0);
+  vec3 F = texelFetch(InSampler, na, 0).rgb;
   ivec3 D = ivec3(round(F * 255.0));
   bool qg =
     (D.r & 1) == 1 &&

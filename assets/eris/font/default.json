@@ -1,0 +1,18 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "ascent": 128,
+      "height": 256,
+      "file": "eris:font/black.png",
+      "chars": ["■"]
+    },
+    {
+      "type": "bitmap",
+      "ascent": 128,
+      "height": 256,
+      "file": "eris:font/notification.png",
+      "chars": ["?"]
+    }
+  ]
+}
