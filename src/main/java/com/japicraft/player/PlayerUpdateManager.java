@@ -24,7 +24,7 @@ public final class PlayerUpdateManager {
             if (!ClientView.record(player, event.getPacket())) {
                 return;
             }
-            CameraAnchor.updateTarget(player, ClientView.pitch(player));
+            CameraAnchor.updateTarget(player);
             if (CameraAnchor.getCameraPosition(player) != null) {
                 MapProbe.updateCursor(player);
             } else {

@@ -102,18 +102,24 @@ int buttonAt(vec2 uv, out vec2 local) {
   if (max(abs(d.x), abs(d.y)) > BTN_HALF) return -1;
   return (p.x > 0.0 ? 1 : 0) + (p.y > 0.0 ? 2 : 0);
 }
-bool digitPixel(int digit, vec2 local) {
-  // 3x5 bitmap glyphs, each row is 3 bits (left = MSB)
-  const int glyphs[20] = int[](
-    2, 6, 2, 2, 7,
-    7, 1, 7, 4, 7,
-    7, 1, 7, 1, 7,
-    5, 5, 7, 1, 1
+bool glyphPixel(int glyph, vec2 uv) {
+  // 3x5 bitmap glyphs for 0..9 and % (index 10), each row is 3 bits (left = MSB)
+  const int glyphs[55] = int[](
+    7, 5, 5, 5, 7, // 0
+    2, 6, 2, 2, 7, // 1
+    7, 1, 7, 4, 7, // 2
+    7, 1, 7, 1, 7, // 3
+    5, 5, 7, 1, 1, // 4
+    7, 4, 7, 1, 7, // 5
+    7, 4, 7, 5, 7, // 6
+    7, 1, 1, 1, 1, // 7
+    7, 5, 7, 5, 7, // 8
+    7, 5, 7, 1, 7, // 9
+    5, 1, 2, 4, 5  // %
   );
-  vec2 g = (local - vec2(0.32, 0.25)) / vec2(0.36, 0.5) * vec2(3.0, 5.0);
-  if (any(lessThan(g, vec2(0.0))) || any(greaterThanEqual(g, vec2(3.0, 5.0)))) return false;
-  ivec2 c = ivec2(g);
-  return ((glyphs[digit * 5 + c.y] >> (2 - c.x)) & 1) == 1;
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) return false;
+  ivec2 c = ivec2(uv * vec2(3.0, 5.0));
+  return ((glyphs[glyph * 5 + c.y] >> (2 - c.x)) & 1) == 1;
 }
 vec3 renderButton(int index, vec2 local, bool hovered) {
   const float bevel = 0.07;
@@ -123,8 +129,104 @@ vec3 renderButton(int index, vec2 local, bool hovered) {
   } else if (local.x > 1.0 - bevel || local.y > 1.0 - bevel) {
     col = vec3(0.08);
   }
-  if (digitPixel(index, local)) {
+  vec2 digitUv = (local - vec2(0.32, 0.25)) / vec2(0.36, 0.5);
+  if (glyphPixel(index + 1, digitUv)) {
     col = hovered ? vec3(1.0) : vec3(0.75);
+  }
+  return col;
+}
+vec3 renderEnergyMonitor(int rowY, vec2 uv) {
+  vec3 col = vec3(0.0);
+  ivec3 posPixel = ivec3(round(texelFetch(InSampler, ivec2(8, rowY), 0).rgb * 255.0));
+  int percent = 100;
+  int usage = 2;
+  int maxUsage = 5;
+  if (posPixel != ivec3(255, 255, 255)) {
+    ivec3 data = ivec3(round(texelFetch(InSampler, ivec2(9, rowY), 0).rgb * 255.0));
+    percent = clamp(data.r, 0, 100);
+    usage = clamp(data.g, 0, 16);
+    maxUsage = max(1, data.b);
+  }
+
+  // 1. Percentage readout in the upper half (e.g. "100%", "85%", "7%")
+  int chars[4];
+  int charCount = 0;
+  if (percent >= 100) {
+    chars[0] = 1;
+    chars[1] = 0;
+    chars[2] = 0;
+    chars[3] = 10;
+    charCount = 4;
+  } else if (percent >= 10) {
+    chars[0] = percent / 10;
+    chars[1] = percent - chars[0] * 10;
+    chars[2] = 10;
+    charCount = 3;
+  } else {
+    chars[0] = percent;
+    chars[1] = 10;
+    charCount = 2;
+  }
+  const float charW = 0.13;
+  const float charH = 0.28;
+  const float charGap = 0.035;
+  float totalW = float(charCount) * charW + float(charCount - 1) * charGap;
+  float startX = 0.5 - totalW * 0.5;
+  float startY = 0.16;
+  if (uv.y >= startY && uv.y < startY + charH && uv.x >= startX && uv.x < startX + totalW) {
+    float relX = uv.x - startX;
+    float stride = charW + charGap;
+    int idx = int(floor(relX / stride));
+    float localX = (relX - float(idx) * stride) / charW;
+    float localY = (uv.y - startY) / charH;
+    if (idx >= 0 && idx < charCount && localX < 1.0) {
+      if (glyphPixel(chars[idx], vec2(localX, localY))) {
+        col = percent <= 20 ? vec3(0.95, 0.25, 0.25) : vec3(0.85, 0.92, 0.85);
+      }
+    }
+  }
+
+  // 2. Segmented energy usage bar in the lower half
+  vec2 barMin = vec2(0.12, 0.56);
+  vec2 barMax = vec2(0.86, 0.84);
+  vec2 border = vec2(0.02, 0.025);
+  // Battery terminal nub on the right
+  if (uv.x >= barMax.x && uv.x <= barMax.x + 0.035 && uv.y >= 0.64 && uv.y <= 0.76) {
+    col = vec3(0.45);
+  }
+  if (all(greaterThanEqual(uv, barMin)) && all(lessThanEqual(uv, barMax))) {
+    bool isBorder =
+      uv.x < barMin.x + border.x || uv.x > barMax.x - border.x ||
+      uv.y < barMin.y + border.y || uv.y > barMax.y - border.y;
+    if (isBorder) {
+      col = vec3(0.45);
+    } else {
+      vec2 innerMin = barMin + border * 1.8;
+      vec2 innerMax = barMax - border * 1.8;
+      if (all(greaterThanEqual(uv, innerMin)) && all(lessThanEqual(uv, innerMax))) {
+        float normX = (uv.x - innerMin.x) / (innerMax.x - innerMin.x);
+        float segCoord = normX * float(maxUsage);
+        int seg = clamp(int(floor(segCoord)), 0, maxUsage - 1);
+        float segFrac = fract(segCoord);
+        // Leave a gap between adjacent segments
+        if (segFrac >= 0.08 && segFrac <= 0.92) {
+          if (seg < usage) {
+            float t = maxUsage > 1 ? float(seg) / float(maxUsage - 1) : 0.0;
+            vec3 lowCol = vec3(0.2, 0.88, 0.32);
+            vec3 midCol = vec3(0.95, 0.82, 0.18);
+            vec3 highCol = vec3(0.95, 0.22, 0.2);
+            vec3 segCol = t < 0.5 ? mix(lowCol, midCol, t * 2.0) : mix(midCol, highCol, (t - 0.5) * 2.0);
+            float localY = (uv.y - innerMin.y) / (innerMax.y - innerMin.y);
+            if (localY < 0.18) {
+              segCol = mix(segCol, vec3(1.0), 0.35);
+            }
+            col = segCol;
+          } else {
+            col = vec3(0.08);
+          }
+        }
+      }
+    }
   }
   return col;
 }
@@ -133,7 +235,9 @@ vec3 renderMonitor(int m, vec2 monitorUv) {
   vec3 screenCol = vec3(0.0);
   if (monitorActive(m)) {
     vec2 aspect = vec2(11.0 / 8.0, 1.0);
-    if (m == 1) {
+    if (m == 0) {
+      screenCol = renderEnergyMonitor(rowY, monitorUv);
+    } else if (m == 1) {
       vec2 local;
       int button = buttonAt(monitorUv, local);
       if (button >= 0) {
@@ -150,25 +254,26 @@ vec3 renderMonitor(int m, vec2 monitorUv) {
         }
         screenCol = renderButton(button, local, hovered == button);
       }
-    }
-    float dotRadius = 0.04;
-    for (int i = 0; i < 16; i++) {
-      ivec3 posPixel = ivec3(
-        round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
-      );
-      if (posPixel == ivec3(255, 255, 255)) continue;
-      int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
-      int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
-      vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
-      float dist = length((monitorUv - dotPos) * aspect);
-      if (dist <= dotRadius) {
-        vec3 dotColor = texelFetch(
-          InSampler,
-          ivec2(8 + i * 2 + 1, rowY),
-          0
-        ).rgb;
-        float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
-        screenCol = mix(screenCol, dotColor, alpha);
+    } else {
+      float dotRadius = 0.04;
+      for (int i = 0; i < 16; i++) {
+        ivec3 posPixel = ivec3(
+          round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
+        );
+        if (posPixel == ivec3(255, 255, 255)) continue;
+        int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
+        int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
+        vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
+        float dist = length((monitorUv - dotPos) * aspect);
+        if (dist <= dotRadius) {
+          vec3 dotColor = texelFetch(
+            InSampler,
+            ivec2(8 + i * 2 + 1, rowY),
+            0
+          ).rgb;
+          float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
+          screenCol = mix(screenCol, dotColor, alpha);
+        }
       }
     }
   }

@@ -4,7 +4,6 @@ import com.japicraft.instance.InstanceManager;
 import com.japicraft.player.PlayerInputManager;
 import com.japicraft.player.PlayerSetupManager;
 import com.japicraft.player.PlayerUpdateManager;
-import com.japicraft.queue.MatchQueue;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minestom.server.Auth;
@@ -37,11 +36,10 @@ public final class Eris {
 
         InstanceManager instanceManager = new InstanceManager();
         SkinResourcePackServer packHost = new SkinResourcePackServer();
-        MatchQueue queue = new MatchQueue();
 
         new PlayerSetupManager().register(instanceManager, packHost);
         new PlayerUpdateManager().register();
-        new PlayerInputManager().register(instanceManager, queue);
+        new PlayerInputManager().register();
         //new GlobalResourcePack().register();
 
         server.start("0.0.0.0", 25565);

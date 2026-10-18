@@ -35,12 +35,12 @@ public final class MapProbe {
         return new Color(red, green, blue);
     }
 
-    private static int encodeAngle(float angle, float fullTurn) {
-        return Math.round(Math.clamp(angle, 0.0F, fullTurn) / fullTurn * 65535.0F);
+    private static int encodeAngle(float angle) {
+        return Math.round(Math.clamp(angle, 0.0F, 360.0F) / 360.0F * 65535.0F);
     }
 
     private static int encodeYaw(float yaw) {
-        return encodeAngle(yaw + 180.0F, 360.0F);
+        return encodeAngle(yaw + 180.0F);
     }
 
     private static int cursorKey(Player player) {
@@ -75,10 +75,6 @@ public final class MapProbe {
         return ItemStack.of(Material.ECHO_SHARD)
             .withItemModel(COMPUTER_ON_MODEL)
             .withCustomModelData(List.of((float) monitorIndex), List.of(), List.of(), colors);
-    }
-
-    public static void activateMonitor(Player player, int monitorIndex, Entity monitorEntity, Dot... dots) {
-        activateMonitor(player, monitorIndex, monitorEntity, List.of(dots));
     }
 
     public static void activateMonitor(Player player, int monitorIndex, Entity monitorEntity, List<Dot> dots) {
@@ -121,6 +117,26 @@ public final class MapProbe {
         desk.lastCursorKey = key;
         ItemStack item = createMonitorItem(monitorIndex, clamped, key);
         desk.entities[monitorIndex].editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(item));
+    }
+
+    public static Dot energyDot(int percent, int usage, int maxUsage) {
+        return new Dot(
+            0.0F,
+            0.0F,
+            new Color(
+                Math.clamp(percent, 0, 100),
+                Math.clamp(usage, 0, 16),
+                Math.clamp(maxUsage, 1, 16)
+            )
+        );
+    }
+
+    public static void setEnergy(Player player, int percent, int usage) {
+        setEnergy(player, percent, usage, 10);
+    }
+
+    public static void setEnergy(Player player, int percent, int usage, int maxUsage) {
+        setDots(player, 0, energyDot(percent, usage, maxUsage));
     }
 
     public static void updateCursor(Player player) {

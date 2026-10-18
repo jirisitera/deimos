@@ -2,8 +2,6 @@ package com.japicraft.player;
 
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.MapProbe;
-import com.japicraft.instance.InstanceManager;
-import com.japicraft.queue.MatchQueue;
 import com.japicraft.server.PostEffect;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -15,12 +13,10 @@ import net.minestom.server.timer.TaskSchedule;
 import java.util.List;
 
 public final class PlayerInputManager {
-    public void register(InstanceManager instanceManager, MatchQueue queue) {
+    public void register() {
         MinecraftServer.getGlobalEventHandler().addListener(PlayerHandAnimationEvent.class, event -> {
             Player player = event.getPlayer();
             if (CameraAnchor.getCameraPosition(player) == null) {
-                //queue.add(player);
-                instanceManager.create(player);
                 return;
             }
             int cameraIndex;
@@ -47,6 +43,9 @@ public final class PlayerInputManager {
 
         MinecraftServer.getGlobalEventHandler().addListener(PlayerInputEvent.class, event -> {
             Player player = event.getPlayer();
+            if (event.hasPressedForwardKey()) {
+
+            }
             CameraAnchor.updateInput(player);
         });
     }

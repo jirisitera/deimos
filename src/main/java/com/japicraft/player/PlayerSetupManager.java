@@ -2,9 +2,10 @@ package com.japicraft.player;
 
 import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
-import com.japicraft.camera.CursorProbe;
 import com.japicraft.camera.MapProbe;
 import com.japicraft.instance.InstanceManager;
+import com.japicraft.instance.StructureLoader;
+import com.japicraft.server.Notification;
 import com.japicraft.server.PostEffect;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.minestom.server.MinecraftServer;
@@ -20,8 +21,8 @@ public final class PlayerSetupManager {
     public void register(InstanceManager instanceManager, SkinResourcePackServer packHost) {
         // configuration phase
         MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {
-            event.setSpawningInstance(instanceManager.getDefault());
             Player player = event.getPlayer();
+            event.setSpawningInstance(instanceManager.create(player));
             player.setRespawnPoint(InstanceManager.INITIAL_SPAWN);
             packHost.sendTo(player);
         });
@@ -30,11 +31,14 @@ public final class PlayerSetupManager {
             Player player = event.getPlayer();
             player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD)));
             player.setInvisible(true);
+            //CursorProbe.update(player);
 
-            if (event.isFirstSpawn()) {
-                CursorProbe.update(player);
-                instanceManager.addToDefault(player);
-            }
+
+            CameraAnchor.attach(player);
+            Avatar.attach(player);
+            StructureLoader.activate(player);
+
+            Notification.info(player, "Welcome to Eris!");
         });
         // leave event
         MinecraftServer.getGlobalEventHandler().addListener(PlayerDisconnectEvent.class, event -> {

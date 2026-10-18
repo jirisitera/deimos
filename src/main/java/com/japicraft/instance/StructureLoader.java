@@ -14,6 +14,7 @@ import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.timer.TaskSchedule;
 
@@ -37,7 +38,7 @@ public final class StructureLoader {
     private static final Pos[] positions = new Pos[]{
         // computers
         new Pos(9.8125, 12.5, 5.790771484375),
-        new Pos(8.4375, 12.5, 6.1875),
+        new Pos(8.4375, 12.5, 6.1375),
         new Pos(7.125, 12.5, 5.875),
         // cameras
         new Pos(1.4375, 13.925, 1.375),
@@ -54,6 +55,7 @@ public final class StructureLoader {
         new MapProbe.Dot(0.35F, 0.65F, new Color(255, 80, 80)),
         new MapProbe.Dot(0.65F, 0.65F, new Color(80, 200, 255))
     );
+    private static final Tag<MonitorState> TAG = Tag.Transient("monitorState");
     private final List<Entity> entities = new ArrayList<>();
 
     public static void load(ClassLoader loader, String path, InstanceContainer instance) {
@@ -71,6 +73,24 @@ public final class StructureLoader {
             structure.createBatch().apply(instance, 0, 10, 0, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static void activate(Player player) {
+        Scheduler scheduler = player.scheduler();
+        List<Entity> monitors = player.getTag(StructureLoader.TAG).monitors();
+
+        for (int i = 0; i < 3; i++) {
+            int current = i;
+            scheduler.scheduleTask(() -> {
+                // activate computer after a delay with its own data (0 = energy, 1 = camera buttons, 2 = map dots)
+                List<MapProbe.Dot> dots = switch (current) {
+                    case 0 -> List.of(MapProbe.energyDot(0, 5, 10));
+                    case 1 -> List.of();
+                    default -> EXAMPLE_MAP;
+                };
+                MapProbe.activateMonitor(player, current, monitors.get(current), dots);
+            }, TaskSchedule.tick(10 * (i + 1)), TaskSchedule.stop());
         }
     }
 
@@ -94,15 +114,10 @@ public final class StructureLoader {
         }
     }
 
-    public void activate(Player player) {
-        player.getInventory().clear();
-        Scheduler scheduler = player.scheduler();
-        for (int i = 0; i < 3; i++) {
-            int current = i;
-            scheduler.scheduleTask(() -> {
-                // activate computer after a delay with its own map data (the center monitor hosts the camera buttons instead)
-                MapProbe.activateMonitor(player, current, entities.get(current), current == 1 ? List.of() : EXAMPLE_MAP);
-            }, TaskSchedule.tick(10 * (i + 1)), TaskSchedule.stop());
-        }
+    public void assignEntityData(Player player) {
+        player.setTag(StructureLoader.TAG, new MonitorState(entities));
+    }
+
+    private record MonitorState(List<Entity> monitors) {
     }
 }

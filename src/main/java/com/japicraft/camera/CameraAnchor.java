@@ -2,9 +2,6 @@ package com.japicraft.camera;
 
 import com.japicraft.instance.InstanceManager;
 import com.japicraft.player.ClientView;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
@@ -13,12 +10,12 @@ import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
-import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
 
 public final class CameraAnchor {
-    public static final float MAX_YAW_OFFSET = 25.0f;
-    public static final float MAX_PITCH_OFFSET = 12.5f;
+    public static final float MAX_YAW_OFFSET = 8.0f;
+    public static final float MAX_PITCH_OFFSET = 8.0f;
+    public static final double MONITOR_ZOOM = 0.22;
     private static final float SMOOTHING = 0.16f;
     private static final float LEAN_YAW_OFFSET = 90.0f;
     private static final Pos[] CAMERA_POSITIONS = {
@@ -28,16 +25,29 @@ public final class CameraAnchor {
         new Pos(1.479736328125, 13.925, 13.46142578125, -35.0F, 25.0F),
         new Pos(15.54638671875, 13.925, 13.45458984375, 35.0F, 25.0F)
     };
+    private static final Pos[] MONITOR_TARGETS = {
+        new Pos(9.8125, 12.6, 5.790771484375),
+        new Pos(8.4375, 12.6, 6.1875),
+        new Pos(7.125, 12.6, 5.875)
+    };
     private static final Tag<Entity> anchor = Tag.Transient("cameraAnchor");
     private static final Tag<Float> baseYaw = Tag.Transient("baseYaw");
     private static final Tag<View> view = Tag.Transient("view");
     private static final Tag<Integer> cameraIndex = Tag.Transient("cameraIndex");
-    private static final Tag<Task> actionBarTask = Tag.Transient("actionBarTask");
 
     private static float ease(float current, float target) {
         float delta = unwrapDelta(target - current);
         float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
         if (Math.abs(delta) < 0.01F) {
+            return target;
+        }
+        return current + delta * progress;
+    }
+
+    private static double easeCoord(double current, double target) {
+        double delta = target - current;
+        double progress = SMOOTHING * SMOOTHING * (3.0 - 2.0 * SMOOTHING);
+        if (Math.abs(delta) < 0.001) {
             return target;
         }
         return current + delta * progress;
@@ -53,45 +63,37 @@ public final class CameraAnchor {
         return delta;
     }
 
-    private static void sendCameraActionBar(Player player) {
-        Component message = Component.text("Cameras: ", NamedTextColor.WHITE);
-        for (int index = 1; index < CAMERA_POSITIONS.length; index++) {
-            if (index > 1) {
-                message = message.append(Component.space());
-            }
-
-            boolean selected = index == player.getTag(CameraAnchor.cameraIndex);
-            Component cameraId = Component.text(
-                selected ? "[" + index + "]" : String.valueOf(index),
-                selected ? NamedTextColor.YELLOW : NamedTextColor.GRAY
-            );
-            if (selected) {
-                cameraId = cameraId.decorate(TextDecoration.BOLD);
-            }
-            message = message.append(cameraId);
-        }
-        player.sendActionBar(message);
+    private static float monitorVirtualX(Player player) {
+        return Math.clamp(
+            (ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_TARGETS.length,
+            0.0F,
+            MONITOR_TARGETS.length - 0.0001F
+        );
     }
 
-    private static void showCameraActionBar(Player player) {
-        CameraAnchor.sendCameraActionBar(player);
-        if (player.hasTag(CameraAnchor.actionBarTask)) {
-            return;
-        }
-        player.setTag(CameraAnchor.actionBarTask, player.scheduler().scheduleTask(
-            () -> CameraAnchor.sendCameraActionBar(player),
-            TaskSchedule.tick(1),
-            TaskSchedule.tick(20)
-        ));
+    private static int activeMonitor(Player player) {
+        return (int) Math.floor(monitorVirtualX(player));
     }
 
-    private static void hideCameraActionBar(Player player) {
-        Task actionBarTask = player.getTag(CameraAnchor.actionBarTask);
-        if (actionBarTask != null) {
-            actionBarTask.cancel();
+    private static float monitorCenterYaw(int monitorIndex) {
+        Pos base = CAMERA_POSITIONS[0];
+        Pos monitor = MONITOR_TARGETS[monitorIndex];
+        double dx = monitor.x() - base.x();
+        double dz = monitor.z() - base.z();
+        return (float) Math.toDegrees(Math.atan2(-dx, dz));
+    }
+
+    private static Pos calculateMainTargetPos(Player player) {
+        Pos base = CAMERA_POSITIONS[0];
+        if (calculateLeanYaw(player) != 0.0f) {
+            return base;
         }
-        player.sendActionBar(Component.empty());
-        player.removeTag(CameraAnchor.actionBarTask);
+        Pos monitor = MONITOR_TARGETS[activeMonitor(player)];
+        return new Pos(
+            base.x() + (monitor.x() - base.x()) * MONITOR_ZOOM,
+            base.y() + (monitor.y() - base.y()) * MONITOR_ZOOM,
+            base.z() + (monitor.z() - base.z()) * MONITOR_ZOOM
+        );
     }
 
     public static void attach(Player player) {
@@ -110,20 +112,16 @@ public final class CameraAnchor {
 
         ClientView.reset(player);
         player.setTag(CameraAnchor.baseYaw, initialPosition.yaw());
-        player.setTag(CameraAnchor.view, new View(initialPosition.yaw(), initialPosition.pitch()));
+        Pos startPos = calculateMainTargetPos(player).withView(
+            unwrapDelta(initialPosition.yaw() + getYawOffset(player)),
+            getPitchOffset(player)
+        );
+        player.setTag(CameraAnchor.view, new View(startPos));
 
-        display.setInstance(player.getInstance(), CAMERA_POSITIONS[0]).thenRun(() -> {
+        display.setInstance(player.getInstance(), startPos).thenRun(() -> {
             player.spectate(display);
             display.addPassenger(player);
         });
-    }
-
-    public static int nextCamera(Player player) {
-        Entity anchor = player.getTag(CameraAnchor.anchor);
-        if (anchor == null) {
-            return -1;
-        }
-        return setCamera(player, (player.getTag(CameraAnchor.cameraIndex) + 1) % CAMERA_POSITIONS.length);
     }
 
     public static int setCamera(Player player, int nextIndex) {
@@ -135,10 +133,15 @@ public final class CameraAnchor {
 
         player.setTag(CameraAnchor.cameraIndex, nextIndex);
         player.setTag(CameraAnchor.baseYaw, cameraPosition.yaw());
-        player.setTag(CameraAnchor.view, new View(cameraPosition.yaw(), cameraPosition.pitch()));
+
+        float leanYaw = calculateLeanYaw(player);
+        float initialYaw = nextIndex == 0 ? unwrapDelta(cameraPosition.yaw() + (leanYaw != 0.0f ? leanYaw : getYawOffset(player))) : cameraPosition.yaw();
+        float initialPitch = nextIndex == 0 ? getPitchOffset(player) : cameraPosition.pitch();
+        Pos initialPos = (nextIndex == 0 ? calculateMainTargetPos(player) : cameraPosition).withView(initialYaw, initialPitch);
+        player.setTag(CameraAnchor.view, new View(initialPos));
 
         anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(0));
-        anchor.teleport(cameraPosition);
+        anchor.teleport(initialPos);
 
         if (nextIndex == 0) {
             anchor.scheduler().scheduleTask(() -> {
@@ -146,9 +149,9 @@ public final class CameraAnchor {
                 anchor.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setPosRotInterpolationDuration(3));
             }, TaskSchedule.tick(3), TaskSchedule.stop());
 
-            hideCameraActionBar(player);
+            //hideCameraActionBar(player);
         } else {
-            showCameraActionBar(player);
+            //showCameraActionBar(player);
         }
         return nextIndex;
     }
@@ -175,8 +178,13 @@ public final class CameraAnchor {
         }
 
         float baseYaw = player.getTag(CameraAnchor.baseYaw);
-        view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
+        float leanYaw = calculateLeanYaw(player);
+        view.targetYaw = unwrapDelta(baseYaw + (leanYaw != 0.0f ? leanYaw : getYawOffset(player)));
         view.targetPitch = getPitchOffset(player);
+        Pos targetPos = calculateMainTargetPos(player);
+        view.targetX = targetPos.x();
+        view.targetY = targetPos.y();
+        view.targetZ = targetPos.z();
     }
 
     public static void update(Player player) {
@@ -190,15 +198,21 @@ public final class CameraAnchor {
             updateInput(player);
         }
 
+        double x = easeCoord(view.x, view.targetX);
+        double y = easeCoord(view.y, view.targetY);
+        double z = easeCoord(view.z, view.targetZ);
         float yaw = ease(view.yaw, view.targetYaw);
         float pitch = ease(view.pitch, view.targetPitch);
-        if (yaw == view.yaw && pitch == view.pitch) {
+        if (x == view.x && y == view.y && z == view.z && yaw == view.yaw && pitch == view.pitch) {
             return;
         }
+        view.x = x;
+        view.y = y;
+        view.z = z;
         view.yaw = unwrapDelta(yaw);
         view.pitch = pitch;
 
-        anchor.teleport(anchor.getPosition().withView(view.yaw, view.pitch));
+        anchor.teleport(new Pos(view.x, view.y, view.z, view.yaw, view.pitch));
     }
 
     public static Pos getCameraPosition(Player player) {
@@ -214,14 +228,17 @@ public final class CameraAnchor {
     }
 
     public static float getYawOffset(Player player) {
-        return Math.clamp(ClientView.mouseYaw(player) / ClientView.MAX_CURSOR_YAW, -1.0f, 1.0f) * MAX_YAW_OFFSET;
+        float virtualX = monitorVirtualX(player);
+        int monitorIndex = (int) Math.floor(virtualX);
+        float localCursorX = (virtualX - monitorIndex - 0.5F) * 2.0F; // -1..1 within the active monitor
+        return monitorCenterYaw(monitorIndex) + localCursorX * MAX_YAW_OFFSET;
     }
 
     public static float getPitchOffset(Player player) {
         return Math.clamp(ClientView.mousePitch(player) / ClientView.MAX_CURSOR_PITCH, -1.0f, 1.0f) * MAX_PITCH_OFFSET;
     }
 
-    public static void updateTarget(Player player, float inputPitch) {
+    public static void updateTarget(Player player) {
         Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor == null) {
             return;
@@ -233,24 +250,22 @@ public final class CameraAnchor {
             return;
         }
         if (cameraIndex != 0) {
-            view.targetYaw = CAMERA_POSITIONS[cameraIndex].yaw();
-            view.targetPitch = CAMERA_POSITIONS[cameraIndex].pitch();
+            Pos pos = CAMERA_POSITIONS[cameraIndex];
+            view.targetX = pos.x();
+            view.targetY = pos.y();
+            view.targetZ = pos.z();
+            view.targetYaw = pos.yaw();
+            view.targetPitch = pos.pitch();
             return;
         }
 
-        float baseYaw = player.getTag(CameraAnchor.baseYaw);
-        view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
-        view.targetPitch = getPitchOffset(player);
+        updateInput(player);
     }
 
     public static void detach(Player player) {
         Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor != null) {
             anchor.remove();
-        }
-        Task actionBarTask = player.getTag(CameraAnchor.actionBarTask);
-        if (actionBarTask != null) {
-            actionBarTask.cancel();
         }
         player.removeTag(CameraAnchor.anchor);
         player.removeTag(CameraAnchor.baseYaw);
@@ -259,16 +274,28 @@ public final class CameraAnchor {
     }
 
     private static final class View {
+        private double x;
+        private double y;
+        private double z;
         private float yaw;
         private float pitch;
+        private double targetX;
+        private double targetY;
+        private double targetZ;
         private float targetYaw;
         private float targetPitch;
 
-        private View(float yaw, float pitch) {
-            this.yaw = yaw;
-            this.pitch = pitch;
-            this.targetYaw = yaw;
-            this.targetPitch = pitch;
+        private View(Pos pos) {
+            this.x = pos.x();
+            this.y = pos.y();
+            this.z = pos.z();
+            this.yaw = pos.yaw();
+            this.pitch = pos.pitch();
+            this.targetX = pos.x();
+            this.targetY = pos.y();
+            this.targetZ = pos.z();
+            this.targetYaw = pos.yaw();
+            this.targetPitch = pos.pitch();
         }
     }
 }
