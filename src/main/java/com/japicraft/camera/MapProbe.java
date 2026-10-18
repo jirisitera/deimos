@@ -1,10 +1,12 @@
 package com.japicraft.camera;
 
 import com.japicraft.Eris;
+import com.japicraft.player.ClientView;
 import net.kyori.adventure.util.RGBLike;
 import net.minestom.server.color.Color;
-import net.minestom.server.entity.EquipmentSlot;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
@@ -14,14 +16,15 @@ import java.util.List;
 import java.util.Objects;
 
 public final class MapProbe {
+    public static final int MONITOR_COUNT = 3;
     public static final int MAX_DOTS = 16;
     private static final float MAX_COORDINATE = 4094.0F;
-    private static final String ITEM_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "map_probe";
+    private static final float BUTTON_HALF_SIZE = 0.18F;
+    private static final float BUTTON_CENTER = 0.22F;
+    private static final String COMPUTER_ON_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer_on";
     private static final Color DEFAULT_COLOR = new Color(255, 255, 255);
-    private static final Tag<MapState> TAG = Tag.Transient("mapProbe");
-
-    private MapProbe() {
-    }
+    private static final Color UNUSED_POSITION = new Color(255, 255, 255);
+    private static final Tag<MonitorDesk> TAG = Tag.Transient("monitorDesk");
 
     public static Color encodePosition(float x, float y) {
         int encodedX = Math.round(Math.clamp(x, 0.0F, 1.0F) * MAX_COORDINATE);
@@ -32,50 +35,136 @@ public final class MapProbe {
         return new Color(red, green, blue);
     }
 
-    public static ItemStack create(Dot... dots) {
-        return create(List.of(dots));
+    private static int encodeAngle(float angle, float fullTurn) {
+        return Math.round(Math.clamp(angle, 0.0F, fullTurn) / fullTurn * 65535.0F);
     }
 
-    public static ItemStack create(List<Dot> dots) {
+    private static int encodeYaw(float yaw) {
+        return encodeAngle(yaw + 180.0F, 360.0F);
+    }
+
+    private static int cursorKey(Player player) {
+        float yawBias = ClientView.wrapDegrees(ClientView.mouseYaw(player) - ClientView.yaw(player));
+        float pitchBias = ClientView.wrapDegrees(ClientView.mousePitch(player) - ClientView.pitch(player));
+        // Quantize to 0.05 degrees so tiny floating-point jitter inside the monitors doesn't trigger item updates
+        int yaw = encodeYaw(Math.round(yawBias * 20.0F) / 20.0F);
+        int pitch = encodeYaw(Math.round(pitchBias * 20.0F) / 20.0F);
+        return (yaw << 16) | pitch;
+    }
+
+    public static ItemStack createMonitorItem(int monitorIndex, List<Dot> dots, int cursorKey) {
+        int yaw = cursorKey >>> 16;
+        int pitch = cursorKey & 0xFFFF;
         int count = Math.min(dots.size(), MAX_DOTS);
-        List<RGBLike> colors = new ArrayList<>(count * 2);
-        for (int i = 0; i < count; i++) {
-            Dot dot = dots.get(i);
-            colors.add(encodePosition(dot.x(), dot.y()));
-            colors.add(dot.color());
+
+        List<RGBLike> colors = new ArrayList<>(MAX_DOTS * 2 + 2);
+        for (int i = 0; i < MAX_DOTS; i++) {
+            if (i < count) {
+                Dot dot = dots.get(i);
+                colors.add(encodePosition(dot.x(), dot.y()));
+                colors.add(dot.color());
+            } else {
+                colors.add(UNUSED_POSITION);
+                colors.add(DEFAULT_COLOR);
+            }
         }
+        // Tint 32 and 33: cursor yaw & pitch
+        colors.add(new Color(yaw >>> 8, yaw & 0xFF, pitch >>> 8));
+        colors.add(new Color(pitch & 0xFF, 91, 126));
+
         return ItemStack.of(Material.ECHO_SHARD)
-            .withItemModel(ITEM_MODEL)
-            .withCustomModelData(List.of(), List.of(), List.of(), colors);
+            .withItemModel(COMPUTER_ON_MODEL)
+            .withCustomModelData(List.of((float) monitorIndex), List.of(), List.of(), colors);
     }
 
-    public static void show(Player player, Dot... dots) {
-        show(player, List.of(dots));
+    public static void activateMonitor(Player player, int monitorIndex, Entity monitorEntity, Dot... dots) {
+        activateMonitor(player, monitorIndex, monitorEntity, List.of(dots));
     }
 
-    public static void show(Player player, List<Dot> dots) {
-        List<Dot> clamped = dots.size() > MAX_DOTS ? List.copyOf(dots.subList(0, MAX_DOTS)) : List.copyOf(dots);
-        MapState previous = player.getTag(TAG);
-        if (previous != null && previous.dots.equals(clamped) && player.getEquipment(EquipmentSlot.MAIN_HAND) == previous.item) {
+    public static void activateMonitor(Player player, int monitorIndex, Entity monitorEntity, List<Dot> dots) {
+        if (monitorIndex < 0 || monitorIndex >= MONITOR_COUNT) {
             return;
         }
-        ItemStack item = previous != null && previous.dots.equals(clamped) ? previous.item : create(clamped);
-        player.setTag(TAG, new MapState(clamped, item));
+        MonitorDesk desk = player.getTag(TAG);
+        if (desk == null) {
+            desk = new MonitorDesk();
+            player.setTag(TAG, desk);
+        }
+        List<Dot> clamped = dots.size() > MAX_DOTS ? List.copyOf(dots.subList(0, MAX_DOTS)) : List.copyOf(dots);
+        int key = cursorKey(player);
+        desk.lastCursorKey = key;
+        desk.entities[monitorIndex] = monitorEntity;
+        desk.dots[monitorIndex] = clamped;
 
-        if (player.getEquipment(EquipmentSlot.MAIN_HAND) != item) {
-            player.setEquipment(EquipmentSlot.MAIN_HAND, item);
+        ItemStack item = createMonitorItem(monitorIndex, clamped, key);
+        monitorEntity.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(item));
+    }
+
+    public static void setDots(Player player, int monitorIndex, Dot... dots) {
+        setDots(player, monitorIndex, List.of(dots));
+    }
+
+    public static void setDots(Player player, int monitorIndex, List<Dot> dots) {
+        if (monitorIndex < 0 || monitorIndex >= MONITOR_COUNT) {
+            return;
+        }
+        MonitorDesk desk = player.getTag(TAG);
+        if (desk == null || desk.entities[monitorIndex] == null) {
+            return;
+        }
+        List<Dot> clamped = dots.size() > MAX_DOTS ? List.copyOf(dots.subList(0, MAX_DOTS)) : List.copyOf(dots);
+        if (clamped.equals(desk.dots[monitorIndex])) {
+            return;
+        }
+        desk.dots[monitorIndex] = clamped;
+        int key = cursorKey(player);
+        desk.lastCursorKey = key;
+        ItemStack item = createMonitorItem(monitorIndex, clamped, key);
+        desk.entities[monitorIndex].editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(item));
+    }
+
+    public static void updateCursor(Player player) {
+        MonitorDesk desk = player.getTag(TAG);
+        if (desk == null) {
+            return;
+        }
+        int key = cursorKey(player);
+        if (key == desk.lastCursorKey) {
+            return;
+        }
+        desk.lastCursorKey = key;
+        for (int i = 0; i < MONITOR_COUNT; i++) {
+            Entity entity = desk.entities[i];
+            if (entity != null) {
+                ItemStack item = createMonitorItem(i, desk.dots[i], key);
+                entity.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(item));
+            }
         }
     }
 
-    public static void hide(Player player) {
+    /**
+     * Returns the camera button (0..3, row-major: top-left, top-right, bottom-left, bottom-right)
+     * under the cursor on the center monitor, or -1. Must match buttonAt() in cursor.fsh.
+     */
+    public static int hoveredButton(Player player) {
+        float virtualX = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
+        if ((int) Math.floor(virtualX) != 1) {
+            return -1;
+        }
+        float u = virtualX - (float) Math.floor(virtualX);
+        float v = Math.clamp((ClientView.mousePitch(player) + ClientView.MAX_CURSOR_PITCH) / (ClientView.MAX_CURSOR_PITCH * 2.0F), 0.0F, 1.0F);
+        float px = (u - 0.5F) * (11.0F / 8.0F);
+        float py = v - 0.5F;
+        float dx = Math.abs(px) - BUTTON_CENTER;
+        float dy = Math.abs(py) - BUTTON_CENTER;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > BUTTON_HALF_SIZE) {
+            return -1;
+        }
+        return (px > 0.0F ? 1 : 0) + (py > 0.0F ? 2 : 0);
+    }
+
+    public static void detach(Player player) {
         player.removeTag(TAG);
-        if (!player.getEquipment(EquipmentSlot.MAIN_HAND).isAir()) {
-            player.setEquipment(EquipmentSlot.MAIN_HAND, ItemStack.AIR);
-        }
-    }
-
-    public static boolean isShown(Player player) {
-        return player.hasTag(TAG);
     }
 
     public record Dot(float x, float y, Color color) {
@@ -88,6 +177,10 @@ public final class MapProbe {
         }
     }
 
-    private record MapState(List<Dot> dots, ItemStack item) {
+    private static final class MonitorDesk {
+        private final Entity[] entities = new Entity[MONITOR_COUNT];
+        @SuppressWarnings("unchecked")
+        private final List<Dot>[] dots = new List[]{List.of(), List.of(), List.of()};
+        private int lastCursorKey = -1;
     }
 }

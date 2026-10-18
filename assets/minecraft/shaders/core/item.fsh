@@ -58,6 +58,15 @@ void main() {
         return;
         #endif
     }
+    if(pbrMark<=-600&&pbrMark>=-602) {
+        #ifdef OIT_ALPHA_ONLY
+        discard;
+        #else
+        int m=-600-pbrMark;
+        fragColor=vec4(float(250+m)/255.0,clamp(faceUv,0.0,1.0),1.0);
+        return;
+        #endif
+    }
     if(pbrMark==_b) {
         #ifdef OIT_ALPHA_ONLY
         discard;
@@ -72,7 +81,7 @@ void main() {
         if(K<0.03)discard;
         float L=0.55+0.45*sin(GameTime*3600.0*(0.6+meshLocal.z)+meshLocal.z*90.0);
         float M=meshLocal.y>0.5?0.45:1.3*(1.1-I*I*0.5);
-        fragColor=vec4(min(vec3(1.0,0.92,0.78)*K*L*M,1.0),1.0);
+        fragColor=vec4(min(vec3(1.0,0.92,0.78)*K*L*M,249.0/255.0),1.0);
         return;
         #endif
     }
@@ -81,7 +90,7 @@ void main() {
         #ifdef OIT_ALPHA_ONLY
         executeAlphaOnlyPhase(gl_FragCoord.z,1.0);
         #else
-        fragColor=vec4(wc(Sampler0,texCoord0,exp2(float(pbrMark)),pbrPos,normalize(pbrNormal)),1.0);
+        fragColor=vec4(min(wc(Sampler0,texCoord0,exp2(float(pbrMark)),pbrPos,normalize(pbrNormal)),vec3(249.0/255.0,1.0,1.0)),1.0);
         #endif
         return;
     }
@@ -99,5 +108,6 @@ void main() {
     executeAlphaOnlyPhase(gl_FragCoord.z,A.a);
     #else
     fragColor=j(A);
+    fragColor.r=min(fragColor.r,249.0/255.0);
     #endif
 }

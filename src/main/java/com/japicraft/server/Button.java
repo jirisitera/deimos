@@ -1,9 +1,6 @@
 package com.japicraft.server;
 
 import com.japicraft.camera.CursorProbe;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.ShadowColor;
-import net.kyori.adventure.title.Title;
 import net.minestom.server.entity.Player;
 
 import java.awt.geom.Rectangle2D;

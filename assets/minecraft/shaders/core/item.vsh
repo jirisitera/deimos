@@ -51,13 +51,19 @@ void main() {
     const vec2 P[4]=vec2[](vec2(0.0,0.0),vec2(0.0,1.0),vec2(1.0,1.0),vec2(1.0,0.0));
     faceUv=P[gl_VertexIndex%4];
     if(O.x>=0.0)gl_Position=ProjMat*ModelViewMat*vec4(pbrPos,1.0);
-    ivec4 Q=ivec4(round(texelFetch(Sampler0,ivec2(UV0*vec2(textureSize(Sampler0,0))),0)*255.0));
-    if(Q.r==252&&Q.g==99&&Q.b<42&&Q.a==255) {
-        const vec2 R[4]=vec2[](vec2(0.0,0.0),vec2(0.0,1.0),vec2(1.0,1.0),vec2(1.0,0.0));
-        vec2 S=R[3-gl_VertexIndex%4];
-        gl_Position=vec4((vec2(float(Q.b),float(_e))+S)/ScreenSize*2.0-1.0,0.999,1.0);
-        meshLocal=Q.b>=40?vec3(91.0,126.0,209.0)/255.0:Color.rgb;
-        pbrMark=_d;
+    vec2 texelPos=UV0*vec2(textureSize(Sampler0,0));
+    ivec4 Q=ivec4(round(texelFetch(Sampler0,ivec2(texelPos),0)*255.0));
+    if(Q.r==252&&Q.g>=99&&Q.g<=101&&Q.a==255) {
+        int m=Q.g-99;
+        if(Q.b==255) {
+            faceUv=(fract(texelPos)-0.125)/0.75;
+            pbrMark=-600-m;
+        } else if(Q.b<44) {
+            vec2 S=P[3-gl_VertexIndex%4];
+            gl_Position=vec4((vec2(float(Q.b),float(_e-m))+S)/ScreenSize*2.0-1.0,0.999,1.0);
+            meshLocal=(Q.b==40||Q.b==41)?vec3(91.0,126.0,209.0)/255.0:Color.rgb;
+            pbrMark=_d;
+        }
     }
     if(N.g==254&&N.b==6) {
         vec3 T=texelFetch(Sampler0,ivec2(UV0*vec2(textureSize(Sampler0,0))),0).rgb;

@@ -17,7 +17,8 @@ import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
 
 public final class CameraAnchor {
-    private static final float MAX_YAW_OFFSET = 90.0f;
+    public static final float MAX_YAW_OFFSET = 25.0f;
+    public static final float MAX_PITCH_OFFSET = 12.5f;
     private static final float SMOOTHING = 0.16f;
     private static final float LEAN_YAW_OFFSET = 90.0f;
     private static final Pos[] CAMERA_POSITIONS = {
@@ -107,6 +108,7 @@ public final class CameraAnchor {
 
         Pos initialPosition = player.getPosition();
 
+        ClientView.reset(player);
         player.setTag(CameraAnchor.baseYaw, initialPosition.yaw());
         player.setTag(CameraAnchor.view, new View(initialPosition.yaw(), initialPosition.pitch()));
 
@@ -121,7 +123,14 @@ public final class CameraAnchor {
         if (anchor == null) {
             return -1;
         }
-        int nextIndex = (player.getTag(CameraAnchor.cameraIndex) + 1) % CAMERA_POSITIONS.length;
+        return setCamera(player, (player.getTag(CameraAnchor.cameraIndex) + 1) % CAMERA_POSITIONS.length);
+    }
+
+    public static int setCamera(Player player, int nextIndex) {
+        Entity anchor = player.getTag(CameraAnchor.anchor);
+        if (anchor == null || nextIndex < 0 || nextIndex >= CAMERA_POSITIONS.length) {
+            return -1;
+        }
         Pos cameraPosition = CAMERA_POSITIONS[nextIndex];
 
         player.setTag(CameraAnchor.cameraIndex, nextIndex);
@@ -167,6 +176,7 @@ public final class CameraAnchor {
 
         float baseYaw = player.getTag(CameraAnchor.baseYaw);
         view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
+        view.targetPitch = getPitchOffset(player);
     }
 
     public static void update(Player player) {
@@ -204,7 +214,11 @@ public final class CameraAnchor {
     }
 
     public static float getYawOffset(Player player) {
-        return Math.clamp(ClientView.mouseYaw(player), -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
+        return Math.clamp(ClientView.mouseYaw(player) / ClientView.MAX_CURSOR_YAW, -1.0f, 1.0f) * MAX_YAW_OFFSET;
+    }
+
+    public static float getPitchOffset(Player player) {
+        return Math.clamp(ClientView.mousePitch(player) / ClientView.MAX_CURSOR_PITCH, -1.0f, 1.0f) * MAX_PITCH_OFFSET;
     }
 
     public static void updateTarget(Player player, float inputPitch) {
@@ -226,7 +240,7 @@ public final class CameraAnchor {
 
         float baseYaw = player.getTag(CameraAnchor.baseYaw);
         view.targetYaw = unwrapDelta(baseYaw + getYawOffset(player) + calculateLeanYaw(player));
-        view.targetPitch = inputPitch;
+        view.targetPitch = getPitchOffset(player);
     }
 
     public static void detach(Player player) {

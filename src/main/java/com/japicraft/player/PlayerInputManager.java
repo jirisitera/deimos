@@ -1,6 +1,7 @@
 package com.japicraft.player;
 
 import com.japicraft.camera.CameraAnchor;
+import com.japicraft.camera.MapProbe;
 import com.japicraft.instance.InstanceManager;
 import com.japicraft.queue.MatchQueue;
 import com.japicraft.server.PostEffect;
@@ -17,10 +18,24 @@ public final class PlayerInputManager {
     public void register(InstanceManager instanceManager, MatchQueue queue) {
         MinecraftServer.getGlobalEventHandler().addListener(PlayerHandAnimationEvent.class, event -> {
             Player player = event.getPlayer();
-            int cameraIndex = CameraAnchor.nextCamera(player);
-            if (cameraIndex < 0) {
+            if (CameraAnchor.getCameraPosition(player) == null) {
                 //queue.add(player);
                 instanceManager.create(player);
+                return;
+            }
+            int cameraIndex;
+            if (CameraAnchor.isMainCamera(player)) {
+                // at the desk: only the camera buttons on the center monitor switch cameras
+                int button = MapProbe.hoveredButton(player);
+                if (button < 0) {
+                    return;
+                }
+                cameraIndex = CameraAnchor.setCamera(player, button + 1);
+            } else {
+                // viewing a camera: click to return to the desk
+                cameraIndex = CameraAnchor.setCamera(player, 0);
+            }
+            if (cameraIndex < 0) {
                 return;
             }
             player.sendPacket(new PostEffectsPacket(CameraAnchor.isMainCamera(player) ? List.of(PostEffect.HUD) : List.of(PostEffect.HUD, PostEffect.CAMERA, PostEffect.CAMERA_SWITCH)));

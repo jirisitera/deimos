@@ -1,9 +1,11 @@
 package com.japicraft.instance;
 
 import com.japicraft.Eris;
+import com.japicraft.camera.MapProbe;
 import net.hollowcube.schem.Schematic;
 import net.hollowcube.schem.reader.SchematicReader;
 import net.kyori.adventure.text.Component;
+import net.minestom.server.color.Color;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
@@ -44,8 +46,14 @@ public final class StructureLoader {
         new Pos(15.54638671875, 13.925, 13.45458984375)
     };
     private static final ItemStack DEACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer");
-    private static final ItemStack ACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer_on");
     private static final ItemStack CAMERA = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "camera");
+    private static final List<MapProbe.Dot> EXAMPLE_MAP = List.of(
+        new MapProbe.Dot(0.5F, 0.5F),
+        new MapProbe.Dot(0.35F, 0.4F),
+        new MapProbe.Dot(0.65F, 0.4F),
+        new MapProbe.Dot(0.35F, 0.65F, new Color(255, 80, 80)),
+        new MapProbe.Dot(0.65F, 0.65F, new Color(80, 200, 255))
+    );
     private final List<Entity> entities = new ArrayList<>();
 
     public static void load(ClassLoader loader, String path, InstanceContainer instance) {
@@ -87,12 +95,13 @@ public final class StructureLoader {
     }
 
     public void activate(Player player) {
+        player.getInventory().clear();
         Scheduler scheduler = player.scheduler();
         for (int i = 0; i < 3; i++) {
             int current = i;
             scheduler.scheduleTask(() -> {
-                // activate computer after a delay
-                entities.get(current).editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(StructureLoader.ACTIVATED));
+                // activate computer after a delay with its own map data (the center monitor hosts the camera buttons instead)
+                MapProbe.activateMonitor(player, current, entities.get(current), current == 1 ? List.of() : EXAMPLE_MAP);
             }, TaskSchedule.tick(10 * (i + 1)), TaskSchedule.stop());
         }
     }

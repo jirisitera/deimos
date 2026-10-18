@@ -8,7 +8,6 @@ import com.japicraft.instance.InstanceManager;
 import com.japicraft.server.PostEffect;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.color.Color;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -31,17 +30,9 @@ public final class PlayerSetupManager {
             Player player = event.getPlayer();
             player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD)));
             player.setInvisible(true);
-            CursorProbe.update(player);
-            MapProbe.show(
-                player,
-                new MapProbe.Dot(0.5F, 0.5F),
-                new MapProbe.Dot(0.35F, 0.4F),
-                new MapProbe.Dot(0.65F, 0.4F),
-                new MapProbe.Dot(0.35F, 0.65F, new Color(255, 80, 80)),
-                new MapProbe.Dot(0.65F, 0.65F, new Color(80, 200, 255))
-            );
 
             if (event.isFirstSpawn()) {
+                CursorProbe.update(player);
                 instanceManager.addToDefault(player);
             }
         });
@@ -50,6 +41,7 @@ public final class PlayerSetupManager {
             Player player = event.getPlayer();
             CameraAnchor.detach(player);
             Avatar.detach(player);
+            MapProbe.detach(player);
             packHost.removePack(player.getUuid());
         });
     }

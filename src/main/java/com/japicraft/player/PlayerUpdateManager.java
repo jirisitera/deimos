@@ -3,14 +3,12 @@ package com.japicraft.player;
 import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.CursorProbe;
+import com.japicraft.camera.MapProbe;
 import com.japicraft.server.Button;
-import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
-
-import java.awt.geom.Rectangle2D;
 
 public final class PlayerUpdateManager {
     public void register() {
@@ -27,9 +25,12 @@ public final class PlayerUpdateManager {
                 return;
             }
             CameraAnchor.updateTarget(player, ClientView.pitch(player));
-            CursorProbe.update(player);
-
-            Button.checkForHovers(player, CursorProbe.screenPosition(player));
+            if (CameraAnchor.getCameraPosition(player) != null) {
+                MapProbe.updateCursor(player);
+            } else {
+                CursorProbe.update(player);
+                Button.checkForHovers(player, CursorProbe.screenPosition(player));
+            }
         });
     }
 }

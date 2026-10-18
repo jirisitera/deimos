@@ -1,7 +1,6 @@
 package com.japicraft.camera;
 
 import com.japicraft.Eris;
-import com.japicraft.player.ClientView;
 import net.minestom.server.color.Color;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.Player;
@@ -33,7 +32,7 @@ public final class CursorProbe {
 
     public static void update(Player player) {
         int yaw = encodeYaw(CameraAnchor.getYawOffset(player));
-        int pitch = encodeAngle(ClientView.pitch(player) + 90.0F, 180.0F);
+        int pitch = encodeAngle(CameraAnchor.getPitchOffset(player) + 90.0F, 180.0F);
         int key = (yaw << 16) | pitch;
 
         ProbeState previous = player.getTag(CursorProbe.TAG);
@@ -49,21 +48,13 @@ public final class CursorProbe {
     }
 
     public static ScreenPosition screenPosition(Player player) {
-        ProbeState state = player.getTag(CursorProbe.TAG);
-        int yaw;
-        int pitch;
-        if (state != null) {
-            yaw = state.key >>> 16;
-            pitch = state.key & 0xFFFF;
-        } else {
-            yaw = encodeYaw(CameraAnchor.getYawOffset(player));
-            pitch = encodeAngle(ClientView.pitch(player) + 90.0F, 180.0F);
-        }
-        // decode exactly like the shader: angle in degrees -> clamp(angle / 90, -1, 1) -> 0.5 + v * 0.5
+        int yaw = encodeYaw(CameraAnchor.getYawOffset(player));
+        int pitch = encodeAngle(CameraAnchor.getPitchOffset(player) + 90.0F, 180.0F);
+        // decode angle in degrees and normalize to [0, 1] across the monitor cursor bounds
         float yawDegrees = yaw / 65535.0F * 360.0F - 180.0F;
         float pitchDegrees = pitch / 65535.0F * 180.0F - 90.0F;
-        float x = 0.5F + Math.clamp(yawDegrees / 90.0F, -1.0F, 1.0F) * 0.5F;
-        float y = 0.5F + Math.clamp(pitchDegrees / 90.0F, -1.0F, 1.0F) * 0.5F;
+        float x = 0.5F + Math.clamp(yawDegrees / CameraAnchor.MAX_YAW_OFFSET, -1.0F, 1.0F) * 0.5F;
+        float y = 0.5F + Math.clamp(pitchDegrees / CameraAnchor.MAX_PITCH_OFFSET, -1.0F, 1.0F) * 0.5F;
         return new ScreenPosition(x, y);
     }
 

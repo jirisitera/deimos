@@ -13,6 +13,41 @@ vec3 pg(vec2 Sa) {
   if (na.y >= 14 && na.y <= 21 && na.x < 48) return vec3(0.0);
   vec3 F = texelFetch(InSampler, na, 0).rgb;
   ivec3 D = ivec3(round(F * 255.0));
+  if (D.r >= 250 && D.r <= 252) {
+    int m = D.r - 250;
+    int rowY = 19 - m;
+    if (
+      ivec3(round(texelFetch(InSampler, ivec2(40, rowY), 0).rgb * 255.0)) !=
+      ivec3(91, 126, 209) ||
+      ivec3(round(texelFetch(InSampler, ivec2(41, rowY), 0).rgb * 255.0)) !=
+      ivec3(91, 126, 209)
+    )
+      return vec3(0.0);
+    vec2 monitorUv = vec2(D.gb) / 255.0;
+    vec2 aspect = vec2(11.0 / 8.0, 1.0);
+    float dotRadius = 0.04;
+    vec3 screenCol = vec3(0.0);
+    for (int i = 0; i < 16; i++) {
+      ivec3 posPixel = ivec3(
+        round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
+      );
+      if (posPixel == ivec3(255, 255, 255)) continue;
+      int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
+      int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
+      vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
+      float dist = length((monitorUv - dotPos) * aspect);
+      if (dist <= dotRadius) {
+        vec3 dotColor = texelFetch(
+          InSampler,
+          ivec2(8 + i * 2 + 1, rowY),
+          0
+        ).rgb;
+        float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
+        screenCol = mix(screenCol, dotColor, alpha);
+      }
+    }
+    return screenCol;
+  }
   bool qg =
     (D.r & 1) == 1 &&
     (D.g & 1) == 0 &&

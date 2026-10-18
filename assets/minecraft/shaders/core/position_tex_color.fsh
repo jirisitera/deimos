@@ -32,9 +32,10 @@ void main() {
             discard;
         }
 
-        // Store signed yaw (-180..180 degrees) as an unsigned value.
+        // Store signed yaw (-180..180 degrees) wrapped modulo 360 as an unsigned value.
+        float wrappedYaw = mod(mod(lookAngles.x + 180.0, 360.0) + 360.0, 360.0);
         int encodedYaw = clamp(
-            int(round((lookAngles.x + 180.0) / 360.0 * 65535.0)),
+            int(round(wrappedYaw / 360.0 * 65535.0)),
             0,
             65535
         );

@@ -22,8 +22,8 @@ public final class Avatar {
     private static final double FORWARD_OFFSET = 0.15;
     private static final double SIDE_OFFSET = 0.35;
     private static final double TABLE_HEIGHT_OFFSET = 0.25;
-    private static final float RIGHT_YAW_ROTATION = 22.5F;
-    private static final float RIGHT_PITCH_ROTATION = 7.5F;
+    private static final float RIGHT_YAW_ROTATION = 12.5F;
+    private static final float RIGHT_PITCH_ROTATION = 6.25F;
     private static final float SMOOTHING = 0.16f;
     private static final float[] LEFT_ROTATION = rotationFromDegrees(75.0F, 180.0F, 5.0F);
     private static final float[] RIGHT_ROTATION = rotationFromDegrees(75.0F, 175.0F, 0.0F);
