@@ -12,6 +12,7 @@ import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.instance.InstanceContainer;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
@@ -83,14 +84,14 @@ public final class StructureLoader {
         for (int i = 0; i < 3; i++) {
             int current = i;
             scheduler.scheduleTask(() -> {
-                // activate computer after a delay with its own data (0 = energy, 1 = camera buttons, 2 = map dots)
+                // activate computer after a delay with its own data (0 = map dots, 1 = energy, 2 = camera buttons)
                 List<MapProbe.Dot> dots = switch (current) {
-                    case 0 -> List.of(MapProbe.energyDot(0, 5, 10));
-                    case 1 -> List.of();
-                    default -> EXAMPLE_MAP;
+                    case 0 -> EXAMPLE_MAP;
+                    case 1 -> List.of(MapProbe.energyDot(0, 5, 10));
+                    default -> List.of();
                 };
                 MapProbe.activateMonitor(player, current, monitors.get(current), dots);
-            }, TaskSchedule.tick(10 * (i + 1)), TaskSchedule.stop());
+            }, TaskSchedule.tick(40 * (i + 1)), TaskSchedule.stop());
         }
     }
 

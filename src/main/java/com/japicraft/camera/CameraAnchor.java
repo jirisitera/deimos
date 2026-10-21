@@ -16,7 +16,10 @@ public final class CameraAnchor {
     public static final float MAX_YAW_OFFSET = 8.0f;
     public static final float MAX_PITCH_OFFSET = 8.0f;
     public static final double MONITOR_ZOOM = 0.22;
-    private static final float SMOOTHING = 0.16f;
+    public static final float BASE_SMOOTHING = 0.16f;
+    public static final float MAX_SMOOTHING = 0.70f;
+    public static final float MIN_DISTANCE = 2.0f;
+    public static final float MAX_DISTANCE = 25.0f;
     private static final float LEAN_YAW_OFFSET = 90.0f;
     private static final Pos[] CAMERA_POSITIONS = {
         InstanceManager.MAIN_SPAWN.add(0, 1.75, -0.25),
@@ -35,18 +38,45 @@ public final class CameraAnchor {
     private static final Tag<View> view = Tag.Transient("view");
     private static final Tag<Integer> cameraIndex = Tag.Transient("cameraIndex");
 
-    private static float ease(float current, float target) {
+    private static float calculateProgress(View view) {
+        return calculateProgress(view.yaw, view.targetYaw, view.pitch, view.targetPitch,
+            view.x, view.targetX, view.y, view.targetY, view.z, view.targetZ);
+    }
+
+    static float calculateProgress(float currentYaw, float targetYaw, float currentPitch, float targetPitch,
+                                   double currentX, double targetX, double currentY, double targetY, double currentZ, double targetZ) {
+        float deltaYaw = unwrapDelta(targetYaw - currentYaw);
+        float deltaPitch = targetPitch - currentPitch;
+        double deltaX = targetX - currentX;
+        double deltaY = targetY - currentY;
+        double deltaZ = targetZ - currentZ;
+
+        float angularDistance = (float) Math.hypot(deltaYaw, deltaPitch);
+        double positionalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+        // Positional distance between monitors (~0.6 blocks) corresponds to ~80 degrees of angular distance
+        float distance = Math.max(angularDistance, (float) (positionalDistance * 133.3));
+
+        if (distance <= MIN_DISTANCE) {
+            float base = BASE_SMOOTHING;
+            return base * base * (3.0F - 2.0F * base);
+        }
+
+        float t = Math.clamp((distance - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE), 0.0F, 1.0F);
+        float smoothT = t * t * (3.0F - 2.0F * t);
+        float smoothing = BASE_SMOOTHING + (MAX_SMOOTHING - BASE_SMOOTHING) * smoothT;
+        return smoothing * smoothing * (3.0F - 2.0F * smoothing);
+    }
+
+    static float ease(float current, float target, float progress) {
         float delta = unwrapDelta(target - current);
-        float progress = SMOOTHING * SMOOTHING * (3.0F - 2.0F * SMOOTHING);
         if (Math.abs(delta) < 0.01F) {
             return target;
         }
         return current + delta * progress;
     }
 
-    private static double easeCoord(double current, double target) {
+    static double easeCoord(double current, double target, double progress) {
         double delta = target - current;
-        double progress = SMOOTHING * SMOOTHING * (3.0 - 2.0 * SMOOTHING);
         if (Math.abs(delta) < 0.001) {
             return target;
         }
@@ -198,11 +228,13 @@ public final class CameraAnchor {
             updateInput(player);
         }
 
-        double x = easeCoord(view.x, view.targetX);
-        double y = easeCoord(view.y, view.targetY);
-        double z = easeCoord(view.z, view.targetZ);
-        float yaw = ease(view.yaw, view.targetYaw);
-        float pitch = ease(view.pitch, view.targetPitch);
+        float progress = calculateProgress(view);
+
+        double x = easeCoord(view.x, view.targetX, progress);
+        double y = easeCoord(view.y, view.targetY, progress);
+        double z = easeCoord(view.z, view.targetZ, progress);
+        float yaw = ease(view.yaw, view.targetYaw, progress);
+        float pitch = ease(view.pitch, view.targetPitch, progress);
         if (x == view.x && y == view.y && z == view.z && yaw == view.yaw && pitch == view.pitch) {
             return;
         }
@@ -225,6 +257,11 @@ public final class CameraAnchor {
             return false;
         }
         return player.getTag(CameraAnchor.cameraIndex) == 0;
+    }
+
+    public static int getActiveCamera(Player player) {
+        Integer index = player.getTag(CameraAnchor.cameraIndex);
+        return index != null ? index : 0;
     }
 
     public static float getYawOffset(Player player) {

@@ -91,7 +91,7 @@ float xg(vec2 Ya) {
   ivec2 ua = ivec2(mod(Ya, 4.0));
   return (float(hd[ua.y * 4 + ua.x]) + 0.5) / 16.0;
 }
-// Camera buttons on the center monitor: 2x2 matrix, measured in monitor-height units so they stay square.
+// Camera buttons on the right monitor: 2x2 matrix, measured in monitor-height units so they stay square.
 // Must match MapProbe.hoveredButton on the server.
 #define BTN_HALF 0.18
 #define BTN_CENTER 0.22
@@ -235,16 +235,16 @@ vec3 renderMonitor(int m, vec2 monitorUv) {
   vec3 screenCol = vec3(0.0);
   if (monitorActive(m)) {
     vec2 aspect = vec2(11.0 / 8.0, 1.0);
-    if (m == 0) {
+    if (m == 1) {
       screenCol = renderEnergyMonitor(rowY, monitorUv);
-    } else if (m == 1) {
+    } else if (m == 2) {
       vec2 local;
       int button = buttonAt(monitorUv, local);
       if (button >= 0) {
         int hovered = -1;
         if (gHasLook) {
           float virtualX = clamp((gLookAngles.x + 54.0) / 108.0 * 3.0, 0.0, 2.9999);
-          if (int(floor(virtualX)) == 1) {
+          if (int(floor(virtualX)) == 2) {
             vec2 unused;
             hovered = buttonAt(
               vec2(fract(virtualX), clamp((gLookAngles.y + 25.0) / 50.0, 0.0, 1.0)),

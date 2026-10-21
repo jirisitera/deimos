@@ -12,6 +12,9 @@ import net.minestom.server.timer.TaskSchedule;
 
 import java.util.List;
 
+import com.japicraft.enemy.Director;
+import net.minestom.server.instance.InstanceContainer;
+
 public final class PlayerInputManager {
     public void register() {
         MinecraftServer.getGlobalEventHandler().addListener(PlayerHandAnimationEvent.class, event -> {
@@ -21,7 +24,20 @@ public final class PlayerInputManager {
             }
             int cameraIndex;
             if (CameraAnchor.isMainCamera(player)) {
-                // at the desk: only the camera buttons on the center monitor switch cameras
+                float leanYaw = CameraAnchor.calculateLeanYaw(player);
+                if (leanYaw != 0.0F) {
+                    Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+                    if (director != null && player.getInstance() instanceof InstanceContainer container) {
+                        if (leanYaw < 0.0F) {
+                            director.doors().toggleRight(player, container);
+                        } else {
+                            director.doors().toggleLeft(player, container);
+                        }
+                    }
+                    return;
+                }
+
+                // at the desk: only the camera buttons on the right monitor switch cameras
                 int button = MapProbe.hoveredButton(player);
                 if (button < 0) {
                     return;
@@ -35,10 +51,18 @@ public final class PlayerInputManager {
                 return;
             }
             player.sendPacket(new PostEffectsPacket(CameraAnchor.isMainCamera(player) ? List.of(PostEffect.HUD) : List.of(PostEffect.HUD, PostEffect.CAMERA, PostEffect.CAMERA_SWITCH)));
-            player.scheduler().scheduleTask(() -> {
-                // stabilize camera
-                player.sendPacket(new PostEffectsPacket(CameraAnchor.isMainCamera(player) ? List.of(PostEffect.HUD) : List.of(PostEffect.HUD, PostEffect.CAMERA)));
-            }, TaskSchedule.tick(5), TaskSchedule.stop());
+
+            if (!CameraAnchor.isMainCamera(player)) {
+                player.scheduler().scheduleTask(() -> {
+                    if (CameraAnchor.isMainCamera(player)) return;
+                    Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+                    if (director != null && director.isCameraJammed(CameraAnchor.getActiveCamera(player))) {
+                        return;
+                    }
+                    // stabilize camera
+                    player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD, PostEffect.CAMERA)));
+                }, TaskSchedule.tick(5), TaskSchedule.stop());
+            }
         });
 
         MinecraftServer.getGlobalEventHandler().addListener(PlayerInputEvent.class, event -> {

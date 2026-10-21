@@ -120,23 +120,15 @@ public final class MapProbe {
     }
 
     public static Dot energyDot(int percent, int usage, int maxUsage) {
-        return new Dot(
-            0.0F,
-            0.0F,
-            new Color(
-                Math.clamp(percent, 0, 100),
-                Math.clamp(usage, 0, 16),
-                Math.clamp(maxUsage, 1, 16)
-            )
-        );
+        return new Dot(0.0F, 0.0F, new Color(Math.clamp(percent, 0, 100), Math.clamp(usage, 0, 16), Math.clamp(maxUsage, 1, 16)));
     }
 
     public static void setEnergy(Player player, int percent, int usage) {
-        setEnergy(player, percent, usage, 10);
+        setEnergy(player, percent, usage, 4);
     }
 
     public static void setEnergy(Player player, int percent, int usage, int maxUsage) {
-        setDots(player, 0, energyDot(percent, usage, maxUsage));
+        setDots(player, 1, energyDot(percent, usage, maxUsage));
     }
 
     public static void updateCursor(Player player) {
@@ -160,11 +152,11 @@ public final class MapProbe {
 
     /**
      * Returns the camera button (0..3, row-major: top-left, top-right, bottom-left, bottom-right)
-     * under the cursor on the center monitor, or -1. Must match buttonAt() in cursor.fsh.
+     * under the cursor on the right monitor, or -1. Must match buttonAt() in cursor.fsh.
      */
     public static int hoveredButton(Player player) {
         float virtualX = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
-        if ((int) Math.floor(virtualX) != 1) {
+        if ((int) Math.floor(virtualX) != 2) {
             return -1;
         }
         float u = virtualX - (float) Math.floor(virtualX);

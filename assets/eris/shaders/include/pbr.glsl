@@ -95,9 +95,9 @@ vec3 bc(
 }
 float fc(float va) {
   float U = va * 1200.0;
-  float gc = 0.97 + 0.03 * sin(U * 23.0) * sin(U * 7.3);
+  float gc = 0.99 + 0.01 * sin(U * 23.0) * sin(U * 7.3);
   float xa = floor(U * 8.0);
-  float hc = fract(sin(xa * 91.17) * 43758.5453) > 0.96 ? 0.82 : 1.0;
+  float hc = fract(sin(xa * 91.17) * 43758.5453) > 0.98 ? 0.94 : 1.0;
   return gc * hc;
 }
 vec3 jc(vec3 Mb, vec3 ab, float Eb, float Nb, float kc, vec3 Qa) {
