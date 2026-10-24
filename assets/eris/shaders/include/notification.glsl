@@ -16,7 +16,7 @@
 
 // vanilla title layout: scale and y offset of the title line around the screen center
 #define TITLE_SCALE 4.0
-#define TITLE_Y -10.0
+#define TITLE_Y - 10.0
 
 float notificationPop(vec2 cell, float progress) {
     vec2 cells = ceil(NOTIFICATION_SIZE / NOTIFICATION_CELL);

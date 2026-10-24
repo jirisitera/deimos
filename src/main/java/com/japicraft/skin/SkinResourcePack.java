@@ -15,7 +15,12 @@ public final class SkinResourcePack {
     private static final byte[] PACK_META = """
             {
                 "pack": {
-                    "description": "Eris Dynamic Modules Pack",
+                    "description": [
+                        {
+                            "color": "#FF5533",
+                            "text": "Eris Dynamic Modules Pack"
+                        }
+                    ],
                     "min_format": 97,
                     "max_format": 97
                 }

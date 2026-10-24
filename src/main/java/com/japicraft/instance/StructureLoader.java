@@ -12,12 +12,9 @@ import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.instance.InstanceContainer;
-import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
-import net.minestom.server.timer.Scheduler;
-import net.minestom.server.timer.TaskSchedule;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,7 +61,6 @@ public final class StructureLoader {
         instance.loadChunk(1, 0);
         instance.loadChunk(0, 1);
         instance.loadChunk(1, 1);
-
         try (InputStream stream = loader.getResourceAsStream(path)) {
             if (stream == null) {
                 throw new RuntimeException("Could not find structure file in resources!");
@@ -77,21 +73,30 @@ public final class StructureLoader {
         }
     }
 
-    public static void activate(Player player) {
-        Scheduler scheduler = player.scheduler();
-        List<Entity> monitors = player.getTag(StructureLoader.TAG).monitors();
-
+    public static void activateLobby(Player player) {
+        MonitorState state = player.getTag(StructureLoader.TAG);
+        if (state == null) return;
+        List<Entity> monitors = state.monitors();
+        int index = MapProbe.LOBBY_MONITOR;
         for (int i = 0; i < 3; i++) {
-            int current = i;
-            scheduler.scheduleTask(() -> {
-                // activate computer after a delay with its own data (0 = map dots, 1 = energy, 2 = camera buttons)
-                List<MapProbe.Dot> dots = switch (current) {
-                    case 0 -> EXAMPLE_MAP;
-                    case 1 -> List.of(MapProbe.energyDot(0, 5, 10));
-                    default -> List.of();
-                };
-                MapProbe.activateMonitor(player, current, monitors.get(current), dots);
-            }, TaskSchedule.tick(40 * (i + 1)), TaskSchedule.stop());
+            if (i != index) {
+                MapProbe.deactivateMonitor(player, i);
+                monitors.get(i).editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(DEACTIVATED));
+            }
+        }
+        MapProbe.activateMonitor(player, index, monitors.get(index), MapProbe.lobbyDots());
+    }
+
+    public static void activate(Player player, int skipIndex) {
+        List<Entity> monitors = player.getTag(StructureLoader.TAG).monitors();
+        for (int i = 0; i < 3; i++) {
+            if (i == skipIndex) continue;
+            // activate computer after a delay with its own data (0 = map dots, 1 = energy, 2 = camera buttons)
+            MapProbe.activateMonitor(player, i, monitors.get(i), switch (i) {
+                case 0 -> EXAMPLE_MAP;
+                case 1 -> List.of(MapProbe.energyDot(0, 5, 10));
+                default -> List.of();
+            });
         }
     }
 

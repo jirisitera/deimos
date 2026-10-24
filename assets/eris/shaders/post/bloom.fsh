@@ -1,77 +1,138 @@
 #version 330
 #extension GL_ARB_separate_shader_objects : require
+
+// @formatter:off
+#include <eris:monitor_data.glsl>
+// @formatter:on
+
 uniform sampler2D InSampler;
+
 layout(std140) uniform BloomConfig {
-  vec2 Step;
-  float Bright;
+    vec2 Step;
+    float Bright;
 };
+
 layout(location = 0) in vec2 texCoord;
 layout(location = 0) out vec4 fragColor;
-vec3 pg(vec2 Sa) {
-  if (Bright < 0.5) return texture(InSampler, Sa).rgb;
-  ivec2 na = ivec2(Sa * vec2(textureSize(InSampler, 0)));
-  if (na.y >= 14 && na.y <= 21 && na.x < 48) return vec3(0.0);
-  vec3 F = texelFetch(InSampler, na, 0).rgb;
-  ivec3 D = ivec3(round(F * 255.0));
-  float rg = max(F.r, max(F.g, F.b)),
-    sg = min(F.r, min(F.g, F.b));
-  bool isWhiteSurface = (rg - sg) < 0.2 * rg;
-  if (D.r >= 250 && D.r <= 252 && !isWhiteSurface) {
-    int m = D.r - 250;
-    if (m != 0) return vec3(0.0);
-    int rowY = 19 - m;
-    if (
-      ivec3(round(texelFetch(InSampler, ivec2(40, rowY), 0).rgb * 255.0)) !=
-      ivec3(91, 126, 209) ||
-      ivec3(round(texelFetch(InSampler, ivec2(41, rowY), 0).rgb * 255.0)) !=
-      ivec3(91, 126, 209)
-    )
-      return vec3(0.0);
-    vec2 monitorUv = vec2(D.gb) / 255.0;
+
+const ivec3 ACTIVE_MARKER = ivec3(91, 126, 209);
+
+bool monitorActive(int rowY) {
+    return ivec3(round(texelFetch(InSampler, ivec2(40, rowY), 0).rgb * 255.0)) == ACTIVE_MARKER &&
+    ivec3(round(texelFetch(InSampler, ivec2(41, rowY), 0).rgb * 255.0)) == ACTIVE_MARKER;
+}
+
+// Lobby screen marker (see MapProbe.lobbyDots / cursor.fsh)
+bool lobbyActive(int rowY) {
+    return ivec3(round(texelFetch(InSampler, ivec2(8, rowY), 0).rgb * 255.0)) == ivec3(0) &&
+    ivec3(round(texelFetch(InSampler, ivec2(9, rowY), 0).rgb * 255.0)) == ACTIVE_MARKER;
+}
+
+// Glow emitted by a monitor screen pixel (cheap approximation of what cursor.fsh renders)
+vec3 monitorGlow(int monitorIndex, vec2 monitorUv) {
+    int rowY = 19 - monitorIndex;
+    if (!monitorActive(rowY)) {
+        return vec3(0.0);
+    }
+    vec2 curved;
+    vec2 centered;
+    if (!curveMonitorUv(monitorUv, curved, centered)) {
+        return vec3(0.0);
+    }
+    // TV static of the lobby screen gives off a soft grey glow
+    if (lobbyActive(rowY)) {
+        return vec3(0.22);
+    }
+    if (monitorIndex != 0) {
+        return vec3(0.0);
+    }
+
+    // Radar dots
     vec2 aspect = vec2(11.0 / 8.0, 1.0);
     float dotRadius = 0.04;
     vec3 screenCol = vec3(0.0);
     for (int i = 0; i < 16; i++) {
-      ivec3 posPixel = ivec3(
-        round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
-      );
-      if (posPixel == ivec3(255, 255, 255)) continue;
-      int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
-      int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
-      vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
-      float dist = length((monitorUv - dotPos) * aspect);
-      if (dist <= dotRadius) {
-        vec3 dotColor = texelFetch(
-          InSampler,
-          ivec2(8 + i * 2 + 1, rowY),
-          0
-        ).rgb;
-        float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
-        screenCol = mix(screenCol, dotColor, alpha);
-      }
+        ivec3 posPixel = ivec3(
+            round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
+        );
+        if (posPixel == ivec3(255, 255, 255)) {
+            continue;
+        }
+
+        int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
+        int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
+        vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
+        float dist = length((curved - dotPos) * aspect);
+        if (dist <= dotRadius) {
+            vec3 dotColor = texelFetch(
+                InSampler,
+                ivec2(8 + i * 2 + 1, rowY),
+                0
+            ).rgb;
+            float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
+            screenCol = mix(screenCol, dotColor, alpha);
+        }
     }
     return screenCol;
-  }
-  bool qg =
-    (D.r & 1) == 1 &&
-    (D.g & 1) == 0 &&
-    (D.b & 1) == 1 &&
-    rg > 0.2;
-  if (qg) return F;
-  if (isWhiteSurface) {
-    float bloomWeight = smoothstep(0.55, 0.85, rg);
-    return F * bloomWeight;
-  }
-  return vec3(0.0);
 }
+
+// Sample bloom input: extracts bright highlights in the first pass (Bright >= 0.5),
+// or samples the intermediate blurred texture in the second pass (Bright < 0.5).
+vec3 sampleBloomHighlight(vec2 uv) {
+    if (Bright < 0.5) {
+        return texture(InSampler, uv).rgb;
+    }
+
+    ivec2 pixelCoord = ivec2(uv * vec2(textureSize(InSampler, 0)));
+
+    // Exclude UI data rows (reserved for CPU-GPU metadata communication) from bloom
+    if (pixelCoord.y >= 14 && pixelCoord.y <= 21 && pixelCoord.x < 48) {
+        return vec3(0.0);
+    }
+
+    vec3 color = texelFetch(InSampler, pixelCoord, 0).rgb;
+    ivec3 rgb255 = ivec3(round(color * 255.0));
+    float maxChannel = max(color.r, max(color.g, color.b));
+    float minChannel = min(color.r, min(color.g, color.b));
+    bool isWhiteSurface = (maxChannel - minChannel) < 0.2 * maxChannel;
+
+    // Monitor screens (red channel 250..252)
+    if (rgb255.r >= 250 && rgb255.r <= 252 && !isWhiteSurface) {
+        vec2 monitorUv;
+        int monitorIndex = decodeMonitor(InSampler, pixelCoord, monitorUv);
+        return monitorIndex >= 0 ? monitorGlow(monitorIndex, monitorUv) : vec3(0.0);
+    }
+
+    // Check emissive parity marker: R odd, G even, B odd
+    bool isEmissive =
+    (rgb255.r & 1) == 1 &&
+    (rgb255.g & 1) == 0 &&
+    (rgb255.b & 1) == 1 &&
+    maxChannel > 0.2;
+
+    if (isEmissive) {
+        return color;
+    }
+
+    if (isWhiteSurface) {
+        float bloomWeight = smoothstep(0.55, 0.85, maxChannel);
+        return color * bloomWeight;
+    }
+
+    return vec3(0.0);
+}
+
 void main() {
-  vec2 tg = Step / vec2(textureSize(InSampler, 0));
-  vec3 ug = pg(texCoord) * 0.0798;
-  float total = 0.0798;
-  for (int ua = 1; ua <= 12; ua++) {
-    float Ba = exp(-float(ua * ua) / 32.0);
-    ug += (pg(texCoord + tg * float(ua)) + pg(texCoord - tg * float(ua))) * Ba;
-    total += 2.0 * Ba;
-  }
-  fragColor = vec4(ug / total * 0.45, 1.0);
+    vec2 texelStep = Step / vec2(textureSize(InSampler, 0));
+    vec3 blurredColor = sampleBloomHighlight(texCoord) * 0.0798;
+    float totalWeight = 0.0798;
+
+    for (int tap = 1; tap <= 12; tap++) {
+        float weight = exp(-float(tap * tap) / 32.0);
+        vec2 offset = texelStep * float(tap);
+        blurredColor += (sampleBloomHighlight(texCoord + offset) + sampleBloomHighlight(texCoord - offset)) * weight;
+        totalWeight += 2.0 * weight;
+    }
+
+    fragColor = vec4(blurredColor / totalWeight * 0.45, 1.0);
 }

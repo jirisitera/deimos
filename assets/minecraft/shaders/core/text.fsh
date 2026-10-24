@@ -1,12 +1,14 @@
 #version 330
 #extension GL_ARB_separate_shader_objects : require
 
+// @formatter:off
 #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
 #include <minecraft:fog.glsl>
 #endif
 
 #include <minecraft:dynamictransforms.glsl>
 #include <minecraft:oit.glsl>
+// @formatter:on
 
 uniform sampler2D Sampler0;
 
@@ -41,7 +43,9 @@ vec4 calculateFinalColor(vec4 color) {
     return color;
 }
 
+// @formatter:off
 #include <eris:text/fragment/import.glsl>
+// @formatter:on
 
 void main() {
     #ifdef IS_GRAYSCALE
@@ -62,5 +66,7 @@ void main() {
     fragColor = calculateFinalColor(color);
     #endif
 
+    // @formatter:off
     #include <eris:text/fragment/patch.glsl>
+    // @formatter:on
 }

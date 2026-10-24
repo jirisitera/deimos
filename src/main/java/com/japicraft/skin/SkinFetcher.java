@@ -104,9 +104,6 @@ public final class SkinFetcher {
         if (player.getSkin() != null) {
             return player.getSkin();
         }
-
-        // During AsyncPlayerConfigurationEvent, player.getSkin() is not yet initialized,
-        // but the GameProfile is available on the PlayerSocketConnection.
         if (player.getPlayerConnection() instanceof PlayerSocketConnection socketConnection) {
             GameProfile profile = socketConnection.gameProfile();
             if (profile != null) {
@@ -119,13 +116,11 @@ public final class SkinFetcher {
                 }
             }
         }
-
-        // Fallback: Query Mojang session server
+        // fallback: query Mojang session server
         PlayerSkin skin = PlayerSkin.fromUuid(player.getUuid().toString());
         if (skin == null) {
             skin = PlayerSkin.fromUsername(player.getUsername());
         }
-
         if (skin != null) {
             player.setSkin(skin);
         }

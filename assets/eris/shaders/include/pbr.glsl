@@ -1,160 +1,244 @@
-#ifndef _t
-#define _t
+#ifndef ERIS_PBR_GLSL
+#define ERIS_PBR_GLSL
+
+// @formatter:off
 #include <eris:pbr_scene.glsl>
-const float ib = 3.14159265;
-vec3 jb() {
-  float kb = -ModelViewMat[2][2];
-  return kb > 0.0
-    ? _v
-    : _w;
+// @formatter:on
+
+const float PI = 3.14159265;
+
+// Camera world offset based on view orientation
+vec3 getCameraWorldOffset() {
+    float viewForwardZ = -ModelViewMat[2][2];
+    return viewForwardZ > 0.0
+    ? CAMERA_OFFSET_NORTH
+    : CAMERA_OFFSET_SOUTH;
 }
-vec3 lb(vec3 F) {
-  return pow(F, vec3(2.2));
+
+// Color space conversions
+vec3 srgbToLinear(vec3 color) {
+    return pow(color, vec3(2.2));
 }
-vec3 mb(vec3 F) {
-  return pow(clamp(F, 0.0, 1.0), vec3(1.0 / 2.2));
+
+vec3 linearToSrgb(vec3 color) {
+    return pow(clamp(color, 0.0, 1.0), vec3(1.0 / 2.2));
 }
-mat3 nb(vec3 ab, vec3 Ya, vec2 Sa) {
-  vec3 ob = dFdx(Ya),
-    pb = dFdy(Ya);
-  vec2 qb = dFdx(Sa),
-    rb = dFdy(Sa);
-  vec3 sb = cross(pb, ab),
-    tb = cross(ab, ob);
-  vec3 U = sb * qb.x + tb * rb.x;
-  vec3 Va = sb * qb.y + tb * rb.y;
-  float ub = inversesqrt(max(max(dot(U, U), dot(Va, Va)), 1e-20));
-  return mat3(U * ub, Va * ub, ab);
+
+// Cotangent frame (TBN matrix) reconstruction from derivatives
+mat3 calculateTBN(vec3 normal, vec3 pos, vec2 uv) {
+    vec3 dp1 = dFdx(pos);
+    vec3 dp2 = dFdy(pos);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+    vec3 dp2perp = cross(dp2, normal);
+    vec3 dp1perp = cross(normal, dp1);
+    vec3 tangent = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 bitangent = dp2perp * duv1.y + dp1perp * duv2.y;
+    float invMax = inversesqrt(max(max(dot(tangent, tangent), dot(bitangent, bitangent)), 1e-20));
+    return mat3(tangent * invMax, bitangent * invMax, normal);
 }
-float vb = 0.0,
-  wb = 0.0;
-vec3 xb = vec3(0.0, 1.0, 0.0);
-float yb(float zb, float X) {
-  float Ab = X * X;
-  float Wa = zb * zb * (Ab - 1.0) + 1.0;
-  return Ab / (ib * Wa * Wa);
+
+// Global parameters for optional wrap/rim lighting
+float gDiffuseWrap = 0.0;
+float gRimIntensity = 0.0;
+vec3 gRimAxis = vec3(0.0, 1.0, 0.0);
+
+// GGX / Trowbridge-Reitz Normal Distribution Function (NDF)
+float distributionGGX(float NdotH, float roughnessSq) {
+    float alphaSq = roughnessSq * roughnessSq;
+    float denom = NdotH * NdotH * (alphaSq - 1.0) + 1.0;
+    return alphaSq / (PI * denom * denom);
 }
-float Bb(float Cb, float Db, float Eb) {
-  float xa = (Eb + 1.0) * (Eb + 1.0) / 8.0;
-  return Cb / (Cb * (1.0 - xa) + xa) * Db / (Db * (1.0 - xa) + xa);
+
+// Schlick-GGX Geometric Shadowing Function (Smith's method)
+float geometrySmith(float NdotV, float NdotL, float roughness) {
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
+    float gV = NdotV / (NdotV * (1.0 - k) + k);
+    float gL = NdotL / (NdotL * (1.0 - k) + k);
+    return gV * gL;
 }
-vec3 Fb(float F, vec3 Gb) {
-  return Gb + (1.0 - Gb) * pow(1.0 - F, 5.0);
+
+// Fresnel-Schlick approximation
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
-vec3 Hb(vec3 Wa, float Eb) {
-  float Ib = smoothstep(mix(0.97, 0.6, Eb), 1.0, Wa.y);
-  return vec3(0.025, 0.022, 0.018) * Ib * (1.0 - Eb);
+
+// Ambient sky lighting based on direction and roughness
+vec3 sampleAmbientSky(vec3 dir, float roughness) {
+    float upwardFactor = smoothstep(mix(0.97, 0.6, roughness), 1.0, dir.y);
+    return vec3(0.025, 0.022, 0.018) * upwardFactor * (1.0 - roughness);
 }
-vec3 Jb(
-  vec3 ab,
-  vec3 sa,
-  vec3 Ya,
-  vec3 Kb,
-  vec3 Lb,
-  vec3 Mb,
-  float Eb,
-  float Nb,
-  vec3 Gb
+
+// Cook-Torrance point light calculation
+vec3 calculatePointLight(
+    vec3 normal,
+    vec3 viewDir,
+    vec3 fragPos,
+    vec3 lightPos,
+    vec3 lightColor,
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    vec3 F0
 ) {
-  vec3 Ob = Kb - Ya;
-  float Pb = dot(Ob, Ob);
-  vec3 Qb = Ob * inversesqrt(Pb);
-  vec3 aa = normalize(Qb + sa);
-  float Db = max(dot(ab, Qb), 0.0),
-    Cb = max(dot(ab, sa), 1e-4),
-    zb = max(dot(ab, aa), 0.0),
-    Rb = max(dot(sa, aa), 0.0);
-  vec3 Sb = Fb(Rb, Gb);
-  vec3 Tb = yb(zb, Eb * Eb) * Bb(Cb, Db, Eb) * Sb / (4.0 * Cb * max(Db, 1e-4));
-  vec3 Ub = (1.0 - Sb) * (1.0 - Nb);
-  float Vb = max((dot(ab, Qb) + vb) / (1.0 + vb), 0.0);
-  vec3 Wb = Ub * Mb / ib * Vb;
-  float Xb = smoothstep(-0.2, 0.5, dot(-sa, Qb));
-  float Yb = max(dot(xb, sa), 1e-4);
-  float Zb = pow(1.0 - Yb, 2.2) * Xb * smoothstep(-0.3, 0.2, dot(xb, Qb) + 0.3);
-  vec3 ac = mix(Mb, vec3(1.0), 0.5) * wb * Zb;
-  return (Wb + Tb * Db + ac) * Lb / max(Pb, 0.06);
+    vec3 lightOffset = lightPos - fragPos;
+    float distSq = dot(lightOffset, lightOffset);
+    vec3 lightDir = lightOffset * inversesqrt(distSq);
+    vec3 halfDir = normalize(lightDir + viewDir);
+
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 1e-4);
+    float NdotH = max(dot(normal, halfDir), 0.0);
+    float VdotH = max(dot(viewDir, halfDir), 0.0);
+
+    // Specular BRDF
+    vec3 F = fresnelSchlick(VdotH, F0);
+    float D = distributionGGX(NdotH, roughness * roughness);
+    float G = geometrySmith(NdotV, NdotL, roughness);
+    vec3 specular = (D * G * F) / (4.0 * NdotV * max(NdotL, 1e-4));
+
+    // Diffuse energy conservation
+    vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+    float wrappedNdotL = max((dot(normal, lightDir) + gDiffuseWrap) / (1.0 + gDiffuseWrap), 0.0);
+    vec3 diffuse = kD * albedo / PI * wrappedNdotL;
+
+    // Rim / backlight contribution
+    float backlightFacing = smoothstep(-0.2, 0.5, dot(-viewDir, lightDir));
+    float rimAngle = max(dot(gRimAxis, viewDir), 1e-4);
+    float rimFactor = pow(1.0 - rimAngle, 2.2) * backlightFacing * smoothstep(-0.3, 0.2, dot(gRimAxis, lightDir) + 0.3);
+    vec3 rimColor = mix(albedo, vec3(1.0), 0.5) * gRimIntensity * rimFactor;
+
+    float attenuation = 1.0 / max(distSq, 0.06);
+    return (diffuse + specular * NdotL + rimColor) * lightColor * attenuation;
 }
-vec3 bc(
-  vec3 ab,
-  vec3 sa,
-  vec3 Ya,
-  vec3 Kb,
-  vec3 cc,
-  vec2 ec,
-  vec3 Lb,
-  vec3 Mb,
-  float Eb,
-  float Nb,
-  vec3 Gb
+
+// Spotlight calculation with smooth cone falloff
+vec3 calculateSpotlight(
+    vec3 normal,
+    vec3 viewDir,
+    vec3 fragPos,
+    vec3 lightPos,
+    vec3 spotlightDir,
+    vec2 cutoffs,
+    vec3 lightColor,
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    vec3 F0
 ) {
-  float xa = smoothstep(ec.x, ec.y, dot(normalize(Ya - Kb), cc));
-  return xa <= 0.0
+    float spotlightAngle = dot(normalize(fragPos - lightPos), spotlightDir);
+    float spotlightIntensity = smoothstep(cutoffs.x, cutoffs.y, spotlightAngle);
+    return spotlightIntensity <= 0.0
     ? vec3(0.0)
-    : Jb(ab, sa, Ya, Kb, Lb * xa, Mb, Eb, Nb, Gb);
+    : calculatePointLight(normal, viewDir, fragPos, lightPos, lightColor * spotlightIntensity, albedo, roughness, metallic, F0);
 }
-float fc(float va) {
-  float U = va * 1200.0;
-  float gc = 0.99 + 0.01 * sin(U * 23.0) * sin(U * 7.3);
-  float xa = floor(U * 8.0);
-  float hc = fract(sin(xa * 91.17) * 43758.5453) > 0.98 ? 0.94 : 1.0;
-  return gc * hc;
+
+// Subtle procedural light flicker (hum + occasional dips)
+float calculateLightFlicker(float timeSeconds) {
+    float timeTicks = timeSeconds * 1200.0;
+    float continuousHum = 0.99 + 0.01 * sin(timeTicks * 23.0) * sin(timeTicks * 7.3);
+    float steppedTime = floor(timeTicks * 8.0);
+    float randomDip = fract(sin(steppedTime * 91.17) * 43758.5453) > 0.98 ? 0.94 : 1.0;
+    return continuousHum * randomDip;
 }
-vec3 jc(vec3 Mb, vec3 ab, float Eb, float Nb, float kc, vec3 Qa) {
-  vec3 sa = normalize(-Qa);
-  vec3 Gb = mix(vec3(0.04), Mb, Nb);
-  vec3 mc = jb();
-  vec3 A = vec3(0.0);
-  for (int ua = 0; ua < _x; ua++) {
-    float xa = ua == 0 ? fc(GameTime) : 1.0;
-    A += bc(
-      ab,
-      sa,
-      Qa,
-      Fc[ua] - mc,
-      Gc[ua],
-      Ic[ua],
-      Hc[ua] * xa,
-      Mb,
-      Eb,
-      Nb,
-      Gb
-    );
-  }
-  float Cb = max(dot(ab, sa), 0.0);
-  vec3 uc = Gb + (max(vec3(1.0 - Eb), Gb) - Gb) * pow(1.0 - Cb, 5.0);
-  vec3 vc =
-    Hb(ab, 1.0) * Mb * (1.0 - Nb) * (1.0 - uc) + Hb(reflect(-sa, ab), Eb) * uc;
-  A += vc * kc;
-  A = A / (1.0 + A);
-  A = pow(A, vec3(1.35));
-  return mb(A);
+
+// Main PBR shading pass
+vec3 shadePBR(vec3 albedo, vec3 normal, float roughness, float metallic, float aoFactor, vec3 viewPos) {
+    vec3 viewDir = normalize(-viewPos);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 cameraOffset = getCameraWorldOffset();
+    vec3 totalRadiance = vec3(0.0);
+
+    for (int i = 0; i < SPOTLIGHT_COUNT; i++) {
+        float flicker = (i == 0) ? calculateLightFlicker(GameTime) : 1.0;
+        totalRadiance += calculateSpotlight(
+            normal,
+            viewDir,
+            viewPos,
+            SPOTLIGHT_POSITIONS[i] - cameraOffset,
+            SPOTLIGHT_DIRECTIONS[i],
+            SPOTLIGHT_CUTOFFS[i],
+            SPOTLIGHT_COLORS[i] * flicker,
+            albedo,
+            roughness,
+            metallic,
+            F0
+        );
+    }
+
+    // Ambient irradiance & reflections
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    vec3 fresnelRoughness = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+    vec3 ambientDiffuse = sampleAmbientSky(normal, 1.0) * albedo * (1.0 - metallic) * (1.0 - fresnelRoughness);
+    vec3 ambientSpecular = sampleAmbientSky(reflect(-viewDir, normal), roughness) * fresnelRoughness;
+    vec3 ambient = ambientDiffuse + ambientSpecular;
+    totalRadiance += ambient * aoFactor;
+
+    // Reinhard tonemapping and contrast adjustment
+    totalRadiance = totalRadiance / (1.0 + totalRadiance);
+    totalRadiance = pow(totalRadiance, vec3(1.35));
+    return linearToSrgb(totalRadiance);
 }
-vec3 wc(sampler2D La, vec2 Sa, float xc, vec3 Qa, vec3 Pa) {
-  vec2 yc = xc / vec2(textureSize(La, 0));
-  vec3 Mb = lb(texture(La, Sa).rgb);
-  vec3 zc = texture(La, Sa + vec2(yc.x, 0.0)).rgb * 2.0 - 1.0;
-  vec3 Ac = texture(La, Sa + vec2(0.0, yc.y)).rgb;
-  vec3 ab = normalize(nb(Pa, Qa, Sa) * zc);
-  return jc(Mb, ab, clamp(Ac.r, 0.05, 1.0), Ac.g, mix(0.5, 1.0, Ac.b), Qa);
+
+// Shading with packed material atlas (Normal map + Roughness/Metallic/AO map)
+vec3 shadePackedPBR(sampler2D atlasSampler, vec2 uv, float atlasSubpixelOffset, vec3 viewPos, vec3 geomNormal) {
+    vec2 uvOffset = atlasSubpixelOffset / vec2(textureSize(atlasSampler, 0));
+    vec3 albedo = srgbToLinear(texture(atlasSampler, uv).rgb);
+    vec3 normalMap = texture(atlasSampler, uv + vec2(uvOffset.x, 0.0)).rgb * 2.0 - 1.0;
+    vec3 materialMap = texture(atlasSampler, uv + vec2(0.0, uvOffset.y)).rgb;
+
+    mat3 tbn = calculateTBN(geomNormal, viewPos, uv);
+    vec3 normal = normalize(tbn * normalMap);
+
+    float roughness = clamp(materialMap.r, 0.05, 1.0);
+    float metallic = materialMap.g;
+    float ao = mix(0.5, 1.0, materialMap.b);
+
+    return shadePBR(albedo, normal, roughness, metallic, ao, viewPos);
 }
-vec3 Bc(sampler2D La, vec2 Sa, vec3 Qa, vec3 Pa, vec2 Cc) {
-  vec3 Mb = lb(texture(La, Sa).rgb);
-  vec2 Sb = Cc * 2.0 - 1.0;
-  vec2 Dc = sign(Sb) * smoothstep(0.5, 1.0, abs(Sb)) * 0.36;
-  vec3 ab = normalize(nb(Pa, Qa, Cc) * normalize(vec3(Dc, 1.0)));
-  xb = Pa;
-  vb = 0.45;
-  wb = 4.0;
-  vec3 F = jc(Mb, ab, 0.75, 0.0, 1.0, Qa);
-  vb = 0.0;
-  wb = 0.0;
-  xb = vec3(0.0, 1.0, 0.0);
-  return F;
+
+// Shading for beveled/cushioned surfaces with custom face UVs
+vec3 shadeBeveledSurface(sampler2D atlasSampler, vec2 uv, vec3 viewPos, vec3 geomNormal, vec2 faceUv) {
+    vec3 albedo = srgbToLinear(texture(atlasSampler, uv).rgb);
+    vec2 centeredFaceUv = faceUv * 2.0 - 1.0;
+    vec2 bevelOffset = sign(centeredFaceUv) * smoothstep(0.5, 1.0, abs(centeredFaceUv)) * 0.36;
+    vec3 normal = normalize(calculateTBN(geomNormal, viewPos, faceUv) * normalize(vec3(bevelOffset, 1.0)));
+
+    gRimAxis = geomNormal;
+    gDiffuseWrap = 0.45;
+    gRimIntensity = 4.0;
+    vec3 result = shadePBR(albedo, normal, 0.75, 0.0, 1.0, viewPos);
+    gDiffuseWrap = 0.0;
+    gRimIntensity = 0.0;
+    gRimAxis = vec3(0.0, 1.0, 0.0);
+
+    return result;
 }
-vec3 Ec(sampler2D La, vec2 Sa, vec3 Qa, vec3 Pa) {
-  vec3 Mb = lb(texture(La, Sa).rgb);
-  vec3 ab = dot(Pa, Qa) > 0.0 ? -Pa : Pa;
-  return jc(Mb, ab, 0.9, 0.0, 1.0, Qa);
+
+// Flat PBR shading without normal mapping
+vec3 shadeFlatPBR(sampler2D atlasSampler, vec2 uv, vec3 viewPos, vec3 geomNormal) {
+    vec3 albedo = srgbToLinear(texture(atlasSampler, uv).rgb);
+    vec3 normal = dot(geomNormal, viewPos) > 0.0 ? -geomNormal : geomNormal;
+    return shadePBR(albedo, normal, 0.9, 0.0, 1.0, viewPos);
 }
+
+// Backwards compatibility aliases
+#define _t ERIS_PBR_GLSL
+#define ib PI
+#define jb getCameraWorldOffset
+#define lb srgbToLinear
+#define mb linearToSrgb
+#define nb calculateTBN
+#define yb distributionGGX
+#define Bb geometrySmith
+#define Fb fresnelSchlick
+#define Hb sampleAmbientSky
+#define Jb calculatePointLight
+#define bc calculateSpotlight
+#define fc calculateLightFlicker
+#define jc shadePBR
+#define wc shadePackedPBR
+#define Bc shadeBeveledSurface
+#define Ec shadeFlatPBR
+
 #endif

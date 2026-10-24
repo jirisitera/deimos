@@ -22,19 +22,12 @@ dependencies {
     implementation("dev.hollowcube:schem:2.0.1")
     // type checking
     compileOnly("org.checkerframework:checker-qual:4.2.3")
-    // tests
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 tasks {

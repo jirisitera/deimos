@@ -19,16 +19,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 
 public class SkinResourcePackServer {
-    public static final int DEFAULT_PORT = 8085;
-    private final String bindHost;
-    private final int port;
+    private static final String HOST = "0.0.0.0";
+    private static final int PORT = 8085;
     private final SkinFetcher skinFetcher;
     private final Map<UUID, SkinResourcePack.PackData> hostedPacks = new ConcurrentHashMap<>();
     private HttpServer httpServer;
 
     public SkinResourcePackServer() {
-        this.bindHost = "0.0.0.0";
-        this.port = DEFAULT_PORT;
         this.skinFetcher = new SkinFetcher();
         try {
             start();
@@ -46,11 +43,11 @@ public class SkinResourcePackServer {
         if (httpServer != null) {
             return;
         }
-        httpServer = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
+        httpServer = HttpServer.create(new InetSocketAddress(HOST, PORT), 0);
         httpServer.createContext("/pack/", this::handlePackRequest);
         httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         httpServer.start();
-        Eris.LOGGER.info("Resource pack HTTP server started on {}:{}", bindHost, getPort());
+        Eris.LOGGER.info("Resource pack HTTP server started on {}:{}", HOST, PORT);
     }
 
     public synchronized void stop() {
@@ -111,25 +108,16 @@ public class SkinResourcePackServer {
 
     public void sendTo(Player player) {
         try {
-            byte[] skinBytes = skinFetcher.fetchSkinPng(player);
             UUID packId = getPackIdForPlayer(player.getUuid());
-            SkinResourcePack.PackData packData = SkinResourcePack.create(packId, skinBytes);
+            SkinResourcePack.PackData packData = SkinResourcePack.create(packId, skinFetcher.fetchSkinPng(player));
             hostedPacks.put(packId, packData);
 
-            String host = resolveHost(player);
-            URI packUri = URI.create("http://" + host + ":" + getPort() + "/pack/" + packId + ".zip");
-
-            ResourcePackInfo packInfo = ResourcePackInfo.resourcePackInfo(packId, packUri, packData.sha1Hex());
-            ResourcePackRequest request = ResourcePackRequest.resourcePackRequest()
-                .packs(packInfo)
+            player.sendResourcePacks(ResourcePackRequest.resourcePackRequest()
+                .packs(ResourcePackInfo.resourcePackInfo(packId, URI.create("http://" + resolveHost(player) + ":" + PORT + "/pack/" + packId + ".zip"), packData.sha1Hex()))
                 .required(true)
                 .prompt(Component.text(""))
-                .callback((id, status, _) -> Eris.LOGGER.info("Resource pack {} status for player {}: {}", id, player.getUsername(), status))
-                .build();
-
-            player.sendResourcePacks(request);
-            Eris.LOGGER.info("Sent dynamic skin resource pack to {} at {}", player.getUsername(), packUri);
-
+                .build()
+            );
         } catch (Exception e) {
             Eris.LOGGER.error("Failed to generate and send skin resource pack to {}", player.getUsername(), e);
         }
@@ -152,9 +140,5 @@ public class SkinResourcePackServer {
         UUID packId = getPackIdForPlayer(playerUuid);
         hostedPacks.remove(packId);
         skinFetcher.invalidate(playerUuid);
-    }
-
-    public int getPort() {
-        return httpServer != null ? httpServer.getAddress().getPort() : port;
     }
 }

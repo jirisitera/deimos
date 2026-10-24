@@ -4,17 +4,16 @@ import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.CursorProbe;
 import com.japicraft.camera.MapProbe;
+import com.japicraft.game.Director;
 import com.japicraft.server.Button;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
-
-import com.japicraft.enemy.Director;
 import net.minestom.server.instance.InstanceContainer;
 
 public final class PlayerUpdateManager {
-    public void register() {
+    public static void register() {
         MinecraftServer.getGlobalEventHandler().addListener(PlayerTickEvent.class, event -> {
             Player player = event.getPlayer();
             CameraAnchor.update(player);

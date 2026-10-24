@@ -2,21 +2,19 @@ package com.japicraft.player;
 
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.MapProbe;
+import com.japicraft.game.Director;
+import com.japicraft.game.Lobby;
 import com.japicraft.server.PostEffect;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerInputEvent;
+import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.network.packet.server.common.PostEffectsPacket;
 import net.minestom.server.timer.TaskSchedule;
 
-import java.util.List;
-
-import com.japicraft.enemy.Director;
-import net.minestom.server.instance.InstanceContainer;
-
 public final class PlayerInputManager {
-    public void register() {
+    public static void register() {
         MinecraftServer.getGlobalEventHandler().addListener(PlayerHandAnimationEvent.class, event -> {
             Player player = event.getPlayer();
             if (CameraAnchor.getCameraPosition(player) == null) {
@@ -24,9 +22,19 @@ public final class PlayerInputManager {
             }
             int cameraIndex;
             if (CameraAnchor.isMainCamera(player)) {
+                // lobby: only the YES button on the main monitor responds, doors and cameras are locked
+                if (Lobby.handleClick(player)) {
+                    return;
+                }
+
+                Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+                if (director != null && director.isGameOver()) {
+                    director.resetToLobby(player);
+                    return;
+                }
+
                 float leanYaw = CameraAnchor.calculateLeanYaw(player);
                 if (leanYaw != 0.0F) {
-                    Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
                     if (director != null && player.getInstance() instanceof InstanceContainer container) {
                         if (leanYaw < 0.0F) {
                             director.doors().toggleRight(player, container);
@@ -50,7 +58,7 @@ public final class PlayerInputManager {
             if (cameraIndex < 0) {
                 return;
             }
-            player.sendPacket(new PostEffectsPacket(CameraAnchor.isMainCamera(player) ? List.of(PostEffect.HUD) : List.of(PostEffect.HUD, PostEffect.CAMERA, PostEffect.CAMERA_SWITCH)));
+            player.sendPacket(new PostEffectsPacket(CameraAnchor.isMainCamera(player) ? PostEffect.resolveActiveEffects(player) : PostEffect.resolveActiveEffects(player, PostEffect.CAMERA_SWITCH)));
 
             if (!CameraAnchor.isMainCamera(player)) {
                 player.scheduler().scheduleTask(() -> {
@@ -60,7 +68,7 @@ public final class PlayerInputManager {
                         return;
                     }
                     // stabilize camera
-                    player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD, PostEffect.CAMERA)));
+                    PostEffect.sync(player);
                 }, TaskSchedule.tick(5), TaskSchedule.stop());
             }
         });

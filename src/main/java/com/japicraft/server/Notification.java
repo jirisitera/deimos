@@ -40,15 +40,11 @@ public class Notification {
     }
 
     private static void show(Player player, String message, TextColor textColor, TextColor backgroundColor, int fadeIn, int stay, int fadeOut) {
-        TextColor bg = safeBackgroundColor(backgroundColor);
-        TextColor fg = markTextColor(textColor);
-        ShadowColor shadow = markShadowColor(textColor);
-
         player.showTitle(Title.title(Component.empty().shadowColor(ShadowColor.none()).append(
-                Component.text(Notification.BACKGROUND).font(Font.DEFAULT).color(bg),
-                Component.text(message).color(HIDE_COLOR),
-                Component.text(message).color(fg).shadowColor(shadow),
-                Component.text(Notification.BACKGROUND).font(Font.DEFAULT).color(HIDE_COLOR)
+                Component.text(Notification.BACKGROUND).font(Font.DEFAULT).color(Notification.safeBackgroundColor(backgroundColor)),
+                Component.text(message).color(Notification.HIDE_COLOR),
+                Component.text(message).color(Notification.markTextColor(textColor)).shadowColor(Notification.markShadowColor(textColor)),
+                Component.text(Notification.BACKGROUND).font(Font.DEFAULT).color(Notification.HIDE_COLOR)
             ), Component.empty(), fadeIn, stay, fadeOut)
         );
     }

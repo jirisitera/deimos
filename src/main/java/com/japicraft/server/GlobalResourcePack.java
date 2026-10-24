@@ -33,7 +33,7 @@ public class GlobalResourcePack {
         return UUID.nameUUIDFromBytes(hash.getBytes());
     }
 
-    public void register() {
+    public static void register() {
         // prepare resource pack
         URI packURI = URI.create("https://github.com/jirisitera/eris/releases/latest/download/eris.zip");
         String packHash = GlobalResourcePack.calculateHash(packURI);

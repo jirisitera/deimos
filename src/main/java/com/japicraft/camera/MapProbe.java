@@ -18,9 +18,16 @@ import java.util.Objects;
 public final class MapProbe {
     public static final int MONITOR_COUNT = 3;
     public static final int MAX_DOTS = 16;
+    // Lobby "YES" button on the main (center) monitor, measured in monitor-height units. Must match cursor.fsh.
+    public static final int LOBBY_MONITOR = 1;
     private static final float MAX_COORDINATE = 4094.0F;
     private static final float BUTTON_HALF_SIZE = 0.18F;
     private static final float BUTTON_CENTER = 0.22F;
+    private static final float LOBBY_BUTTON_CENTER_Y = 0.68F;
+    private static final float LOBBY_BUTTON_HALF_WIDTH = 0.2F;
+    private static final float LOBBY_BUTTON_HALF_HEIGHT = 0.11F;
+    // Slot 0 marker that switches a monitor into the lobby screen (energy dots never use g > 16, so no clash)
+    private static final Color LOBBY_MARKER = new Color(91, 126, 209);
     private static final String COMPUTER_ON_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer_on";
     private static final Color DEFAULT_COLOR = new Color(255, 255, 255);
     private static final Color UNUSED_POSITION = new Color(255, 255, 255);
@@ -96,6 +103,18 @@ public final class MapProbe {
         monitorEntity.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setItemStack(item));
     }
 
+    public static void deactivateMonitor(Player player, int monitorIndex) {
+        if (monitorIndex < 0 || monitorIndex >= MONITOR_COUNT) {
+            return;
+        }
+        MonitorDesk desk = player.getTag(TAG);
+        if (desk == null) {
+            return;
+        }
+        desk.entities[monitorIndex] = null;
+        desk.dots[monitorIndex] = List.of();
+    }
+
     public static void setDots(Player player, int monitorIndex, Dot... dots) {
         setDots(player, monitorIndex, List.of(dots));
     }
@@ -169,6 +188,28 @@ public final class MapProbe {
             return -1;
         }
         return (px > 0.0F ? 1 : 0) + (py > 0.0F ? 2 : 0);
+    }
+
+    /**
+     * Data for the lobby screen ("Do you want to play a game?" + YES button).
+     */
+    public static List<Dot> lobbyDots() {
+        return List.of(new Dot(0.0F, 0.0F, LOBBY_MARKER));
+    }
+
+    /**
+     * Returns true if the cursor is over the lobby YES button on the main monitor. Must match lobbyButton() in cursor.fsh.
+     */
+    public static boolean isLobbyButtonHovered(Player player) {
+        float virtualX = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
+        if ((int) Math.floor(virtualX) != LOBBY_MONITOR) {
+            return false;
+        }
+        float u = virtualX - (float) Math.floor(virtualX);
+        float v = Math.clamp((ClientView.mousePitch(player) + ClientView.MAX_CURSOR_PITCH) / (ClientView.MAX_CURSOR_PITCH * 2.0F), 0.0F, 1.0F);
+        float px = (u - 0.5F) * (11.0F / 8.0F);
+        float py = v - LOBBY_BUTTON_CENTER_Y;
+        return Math.abs(px) <= LOBBY_BUTTON_HALF_WIDTH && Math.abs(py) <= LOBBY_BUTTON_HALF_HEIGHT;
     }
 
     public static void detach(Player player) {

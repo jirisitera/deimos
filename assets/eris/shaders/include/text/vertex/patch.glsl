@@ -34,7 +34,7 @@ if (marker == NOTIFICATION_HIDE) {
     // alpha is kept opaque so text.fsh doesn't discard it, the fade is handled by the build instead
     texCoord0 = (vec2(1.0, 1.0) + corner) / textureSize;
     vertexColor = vec4(Color.rgb, 1.0);
-    
+
 } else if (marker == NOTIFICATION_TEXT) {
     renderNotification = 2.0;
 

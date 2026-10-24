@@ -21,7 +21,10 @@
                     {
                         "name": "Step",
                         "type": "vec2",
-                        "value": [4.0, 0.0]
+                        "value": [
+                            4.0,
+                            0.0
+                        ]
                     },
                     {
                         "name": "Bright",
@@ -47,7 +50,10 @@
                     {
                         "name": "Step",
                         "type": "vec2",
-                        "value": [0.0, 4.0]
+                        "value": [
+                            0.0,
+                            4.0
+                        ]
                     },
                     {
                         "name": "Bright",
@@ -91,6 +97,13 @@
                     "bilinear": false
                 },
                 {
+                    "sampler_name": "Font",
+                    "location": "eris:monitor_font",
+                    "width": 512,
+                    "height": 256,
+                    "bilinear": true
+                },
+                {
                     "sampler_name": "Ao",
                     "target": "ao",
                     "bilinear": true
@@ -112,7 +125,12 @@
                     {
                         "name": "ColorModulate",
                         "type": "vec4",
-                        "value": [1.0, 1.0, 1.0, 1.0]
+                        "value": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
                     }
                 ]
             },

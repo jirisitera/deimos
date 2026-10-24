@@ -1,9 +1,11 @@
 #version 330
 #extension GL_ARB_separate_shader_objects : require
 
+// @formatter:off
 #include <minecraft:fog.glsl>
 #include <minecraft:dynamictransforms.glsl>
 #include <minecraft:oit.glsl>
+// @formatter:on
 
 layout(location = 0) in float sphericalVertexDistance;
 layout(location = 1) in float cylindricalVertexDistance;
@@ -28,7 +30,9 @@ void main() {
     #ifdef OIT_ALPHA_ONLY
     executeAlphaOnlyPhase(gl_FragCoord.z, color.a);
     #else
+    // @formatter:off
     #include <eris:lines.glsl>
+    // @formatter:on
     fragColor = calculateFinalColor(color);
     #endif
 }
