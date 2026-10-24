@@ -127,6 +127,7 @@ public final class CameraAnchor {
     }
 
     public static void attach(Player player) {
+        detach(player);
         Entity display = new Entity(EntityType.ITEM_DISPLAY);
 
         display.editEntityMeta(ItemDisplayMeta.class, meta -> {
@@ -300,8 +301,10 @@ public final class CameraAnchor {
     }
 
     public static void detach(Player player) {
+        player.stopSpectating();
         Entity anchor = player.getTag(CameraAnchor.anchor);
         if (anchor != null) {
+            anchor.removePassenger(player);
             anchor.remove();
         }
         player.removeTag(CameraAnchor.anchor);

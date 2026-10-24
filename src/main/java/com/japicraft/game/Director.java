@@ -10,7 +10,6 @@ import com.japicraft.server.Notification;
 import com.japicraft.server.PostEffect;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
-import net.minestom.server.color.Color;
 import net.minestom.server.entity.Player;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.network.packet.server.common.PostEffectsPacket;
@@ -23,26 +22,19 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Macro-level AI Director.
  * <p>
- * Responsibilities:
- * 1. Pacing (BUILDUP -> PEAK -> RECOVERY).
- * 2. Tracking player camera habits via a per-camera Heatmap so enemies dynamically route around
- * frequently checked cameras.
- * 3. Anti-cheese protection (camera switch stabilization, staring warning, and hallucination/jamming).
+ * Responsibilities include pacing of the game, tracking player camera habits via a per-camera Heatmap so enemies dynamically route around frequently checked cameras, some anti-cheese protection.
  * <p>
- * --- FUTURE EXPANSION IDEAS (Kept out for simplicity) ---
- * - Audio Decoys / Vent Lures: Allow the player to ping a room with sound to pull enemies toward a
- * specific graph node, at the cost of temporary radar blindness.
- * - Coordinated Pincer Attacks: During PEAK phase, hold one enemy 1 step away from the left door
- * until a second enemy reaches the right flank, forcing simultaneous multi-side management.
- * - Per-Camera Power Sabotage: Enemies with zero camera avoidance (e.g., LURKER) could temporarily
- * knock out a camera node's light level when stepping through it.
  */
 public final class Director {
-    // Anti-cheese tuning constants
-    private static final int CAMERA_STABILIZE_TICKS = 8;     // 0.4s delay after switching before camera can ward
-    private static final int STARE_WARNING_TICKS = 100;      // 5.0s continuous stare -> warning audio
-    private static final int STARE_OVERLOAD_TICKS = 160;     // 8.0s continuous stare -> hallucination + camera jam
+    // anti-cheese tuning
+    private static final int CAMERA_STABILIZE_TICKS = 8;      // 0.4s delay after switching before camera can ward
+    private static final int STARE_WARNING_TICKS = 100;       // 5.0s continuous stare -> warning audio
+    private static final int STARE_OVERLOAD_TICKS = 160;      // 8.0s continuous stare -> hallucination + camera jam
     private static final int CAMERA_JAM_DURATION_TICKS = 100; // 5.0s camera disabled after overload
+    // clock settings
+    private static final int CLOCK_HOUR_TICKS = 1200;
+    private static final int CLOCK_FINAL_HOUR = 6;
+    private static final int CLOCK_UPDATE_TICKS = 10;
     private final List<ActionBody> bodies = new ArrayList<>();
     private final DoorController doors = new DoorController();
     // Camera usage tracking (1-indexed for cameras 1..4)
@@ -52,11 +44,10 @@ public final class Director {
     private int cameraStabilizeTicks = 0;
     private int jammedCamera = -1;
     private int cameraJamTicks = 0;
-    private int hallucinationRadarTicks = 0;
     private PacingPhase phase = PacingPhase.BUILDUP;
     private int phaseTicks = 0;
     private int matchTicks = 0;
-    private int radarUpdateTicks = 0;
+    private int clockUpdateTicks = 0;
     private boolean gameOver = false;
     private boolean cleanedUp = false;
 
@@ -68,35 +59,16 @@ public final class Director {
         return director;
     }
 
-    /**
-     * Registers an enemy on the default interconnected facility graph at the given start node ID.
-     */
-    public Director spawnEnemy(ActionBodyType type, String startNodeId) {
-        return spawnEnemy(type, EnemyRoutes.FACILITY_GRAPH, startNodeId);
+    public void spawnEnemy(ActionBodyType type, String startNodeId) {
+        spawnEnemy(type, EnemyRoutes.FACILITY_GRAPH, startNodeId);
     }
 
-    /**
-     * Registers an enemy on a custom route graph at the given start node ID.
-     */
-    public Director spawnEnemy(ActionBodyType type, Route route, String startNodeId) {
+    public void spawnEnemy(ActionBodyType type, Route route, String startNodeId) {
         bodies.add(new ActionBody(type, route, startNodeId));
-        return this;
-    }
-
-    public void addBody(ActionBody body) {
-        bodies.add(body);
-    }
-
-    public List<ActionBody> bodies() {
-        return bodies;
     }
 
     public DoorController doors() {
         return doors;
-    }
-
-    public PacingPhase phase() {
-        return phase;
     }
 
     public boolean isGameOver() {
@@ -108,16 +80,10 @@ public final class Director {
         return cameraHeat[cameraIndex];
     }
 
-    /**
-     * Returns true if the specified camera is currently jammed/overloaded from excessive staring.
-     */
     public boolean isCameraJammed(int cameraIndex) {
         return cameraIndex > 0 && jammedCamera == cameraIndex && cameraJamTicks > 0;
     }
 
-    /**
-     * Returns true if the camera is stabilized (not mid-switch) and not jammed from staring too long.
-     */
     public boolean isCameraFunctional(int cameraIndex) {
         if (cameraIndex <= 0) return false;
         if (cameraStabilizeTicks > 0) return false;
@@ -136,39 +102,50 @@ public final class Director {
         matchTicks++;
         phaseTicks++;
 
-        // 1. Track player camera usage, heatmap decay, and anti-cheese staring
+        // win condition
+        if (currentHour() >= CLOCK_FINAL_HOUR) {
+            onVictory(player);
+            return;
+        }
+
         updateCameraTracking(player);
 
-        // 2. Tick doors and energy consumption
+        // tick doors and energy consumption
         doors.tick(player, instance);
 
-        // 3. Manage Macro Tension / Pacing Phase
         updatePacing();
 
-        // 4. Tick Action Bodies
+        // tick Action Bodies
         for (ActionBody body : bodies) {
             body.tick(player, this, doors, instance);
         }
 
-        // 5. Update Security Radar on Monitor 0 every half-second
-        radarUpdateTicks++;
-        if (radarUpdateTicks >= 10) {
-            radarUpdateTicks = 0;
-            syncRadar(player);
+        // update the night clock on the left monitor every half-second
+        clockUpdateTicks++;
+        if (clockUpdateTicks >= CLOCK_UPDATE_TICKS) {
+            clockUpdateTicks = 0;
+            syncClock(player);
         }
     }
 
+    public int currentHour() {
+        return Math.min(CLOCK_FINAL_HOUR, matchTicks / CLOCK_HOUR_TICKS);
+    }
+
+    private void syncClock(Player player) {
+        int hour = currentHour();
+        float progress = hour >= CLOCK_FINAL_HOUR ? 1.0F : (float) (matchTicks % CLOCK_HOUR_TICKS) / CLOCK_HOUR_TICKS;
+        MapProbe.setClock(player, hour, progress);
+    }
+
     private void updateCameraTracking(Player player) {
-        // Slowly cool down all camera heat values over time
+        // slowly cool down all camera heat values over time
         for (int i = 1; i < cameraHeat.length; i++) {
             cameraHeat[i] = Math.max(0.0F, cameraHeat[i] * 0.995F);
         }
 
         if (cameraStabilizeTicks > 0) {
             cameraStabilizeTicks--;
-        }
-        if (hallucinationRadarTicks > 0) {
-            hallucinationRadarTicks--;
         }
         if (cameraJamTicks > 0) {
             cameraJamTicks--;
@@ -220,7 +197,6 @@ public final class Director {
         currentCamStareTicks = 0;
         jammedCamera = activeCam;
         cameraJamTicks = CAMERA_JAM_DURATION_TICKS;
-        hallucinationRadarTicks = 80; // Show phantom radar glitch for 4s
 
         // Play audio hallucination / signal spike
         player.playSound(
@@ -232,9 +208,6 @@ public final class Director {
         Notification.warn(player, "CAMERA 0" + activeCam + " SIGNAL OVERLOAD");
     }
 
-    /**
-     * Picks the best next node from the available graph branches based on the player's camera usage heatmap.
-     */
     public PathNode chooseNextNode(ActionBody body, List<PathNode> candidates) {
         if (candidates.isEmpty()) return null;
         if (candidates.size() == 1) return candidates.getFirst();
@@ -334,6 +307,29 @@ public final class Director {
         Notification.warn(player, "GAME OVER");
 
         // Allow 2.5s (50 ticks) for the breach jumpscare/roar before resetting to Lobby
+        scheduleLobbyReset(player);
+    }
+
+    public void onVictory(Player player) {
+        if (gameOver) return;
+        gameOver = true;
+
+        if (!CameraAnchor.isMainCamera(player)) {
+            CameraAnchor.setCamera(player, 0);
+            PostEffect.sync(player);
+        }
+
+        MapProbe.setClock(player, CLOCK_FINAL_HOUR, 1.0F);
+        player.playSound(
+            Sound.sound(Key.key("minecraft:ui.toast.challenge_complete"), Sound.Source.MASTER, 1.0F, 1.0F),
+            player.getPosition().x(), player.getPosition().y(), player.getPosition().z()
+        );
+        Notification.success(player, "YOU SURVIVED THE NIGHT!");
+
+        scheduleLobbyReset(player);
+    }
+
+    private void scheduleLobbyReset(Player player) {
         player.scheduler().scheduleTask(() -> {
             if (!player.isOnline()) return;
             resetToLobby(player);
@@ -359,44 +355,6 @@ public final class Director {
         PostEffect.sync(player);
 
         Lobby.enter(player);
-    }
-
-    private void syncRadar(Player player) {
-        List<MapProbe.Dot> dots = new ArrayList<>();
-        // Center office dot (defender location)
-        dots.add(new MapProbe.Dot(0.5F, 0.16F, new Color(80, 200, 255))); // Cyan dot at office
-
-        for (ActionBody body : bodies) {
-            if (body.state() == ActionBody.State.DORMANT) continue;
-
-            if (body.state() == ActionBody.State.RELOCATING) {
-                // Ghostly signal flicker while target has vanished and is traveling
-                if ((matchTicks / 3) % 2 == 0) {
-                    continue; // Radar blip lost in transit
-                }
-            }
-
-            Color dotColor = body.type().radarColor();
-            if (body.state() == ActionBody.State.OBSERVED) {
-                dotColor = new Color(255, 255, 100); // Yellow when frozen on camera
-            } else if (body.state() == ActionBody.State.WAITING_AT_DOOR) {
-                // Flash bright red at door
-                dotColor = (matchTicks / 5) % 2 == 0 ? new Color(255, 30, 30) : new Color(180, 0, 0);
-            } else if (body.state() == ActionBody.State.RELOCATING) {
-                // Faded blip while relocating
-                dotColor = new Color(dotColor.red() / 2, dotColor.green() / 2, dotColor.blue() / 2);
-            }
-
-            dots.add(new MapProbe.Dot(body.currentNode().mapX(), body.currentNode().mapY(), dotColor));
-        }
-
-        // If the player triggered a staring hallucination, spawn a flickering phantom blip on the radar
-        if (hallucinationRadarTicks > 0 && (matchTicks / 5) % 2 == 0) {
-            ThreadLocalRandom rnd = ThreadLocalRandom.current();
-            dots.add(new MapProbe.Dot(0.25F + rnd.nextFloat() * 0.5F, 0.30F + rnd.nextFloat() * 0.45F, new Color(200, 80, 255)));
-        }
-
-        MapProbe.setDots(player, 0, dots);
     }
 
     public void cleanup() {

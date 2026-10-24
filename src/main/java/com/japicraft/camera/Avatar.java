@@ -27,7 +27,7 @@ public final class Avatar {
     private static final float SMOOTHING = 0.16f;
     private static final float[] LEFT_ROTATION = rotationFromDegrees(75.0F, 180.0F, 5.0F);
     private static final float[] RIGHT_ROTATION = rotationFromDegrees(75.0F, 175.0F, 0.0F);
-    private static final Tag<Hands> TAG = Tag.Transient("firstPersonHands");
+    private static final Tag<Parts> TAG = Tag.Transient("firstPersonParts");
 
     private static Entity createHand(String hand, boolean slim) {
         Entity entity = new Entity(EntityType.ITEM_DISPLAY);
@@ -90,6 +90,7 @@ public final class Avatar {
     }
 
     public static void attach(Player player) {
+        detach(player);
         boolean slim = SkinFetcher.isSlim(player.getSkin());
 
         Entity left = createHand(LEFT_HAND, slim);
@@ -99,7 +100,7 @@ public final class Avatar {
         ClientView.View view = updateRightHand(player);
 
         right.editEntityMeta(ItemDisplayMeta.class, meta -> meta.setLeftRotation(rightHandRotation(view.yaw(), view.pitch())));
-        player.setTag(Avatar.TAG, new Hands(left, right, view.yaw(), view.pitch()));
+        player.setTag(Avatar.TAG, new Parts(left, right, body, view.yaw(), view.pitch()));
 
         Pos camera = player.getPosition();
         Instance instance = player.getInstance();
@@ -117,46 +118,49 @@ public final class Avatar {
     }
 
     public static void update(Player player) {
-        Hands pair = player.getTag(Avatar.TAG);
-        if (pair == null) {
+        Parts parts = player.getTag(Avatar.TAG);
+        if (parts == null) {
             return;
         }
         ClientView.View view = updateRightHand(player);
 
-        float yawOffset = ease(pair.currentYawOffset, view.yaw());
-        float pitchOffset = ease(pair.currentPitchOffset, view.pitch());
-        if (yawOffset == pair.currentYawOffset && pitchOffset == pair.currentPitchOffset) {
+        float yawOffset = ease(parts.currentYawOffset, view.yaw());
+        float pitchOffset = ease(parts.currentPitchOffset, view.pitch());
+        if (yawOffset == parts.currentYawOffset && pitchOffset == parts.currentPitchOffset) {
             return;
         }
 
-        pair.currentYawOffset = yawOffset;
-        pair.currentPitchOffset = pitchOffset;
+        parts.currentYawOffset = yawOffset;
+        parts.currentPitchOffset = pitchOffset;
 
-        pair.right.editEntityMeta(ItemDisplayMeta.class, meta -> {
+        parts.right.editEntityMeta(ItemDisplayMeta.class, meta -> {
             meta.setLeftRotation(rightHandRotation(yawOffset, pitchOffset));
             meta.setTransformationInterpolationStartDelta(0);
         });
     }
 
     public static void detach(Player player) {
-        Hands pair = player.getTag(Avatar.TAG);
-        if (pair == null) {
+        Parts parts = player.getTag(Avatar.TAG);
+        if (parts == null) {
             return;
         }
-        pair.left.remove();
-        pair.right.remove();
+        parts.left.remove();
+        parts.right.remove();
+        parts.body.remove();
         player.removeTag(Avatar.TAG);
     }
 
-    private static final class Hands {
+    private static final class Parts {
         final Entity left;
         final Entity right;
+        final Entity body;
         float currentYawOffset;
         float currentPitchOffset;
 
-        Hands(Entity left, Entity right, float currentYawOffset, float currentPitchOffset) {
+        Parts(Entity left, Entity right, Entity body, float currentYawOffset, float currentPitchOffset) {
             this.left = left;
             this.right = right;
+            this.body = body;
             this.currentYawOffset = currentYawOffset;
             this.currentPitchOffset = currentPitchOffset;
         }

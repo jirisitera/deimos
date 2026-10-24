@@ -39,6 +39,10 @@ public class Notification {
         show(player, message, TextColor.fromHexString("#FF5555"), TextColor.fromHexString("#402828"), 80, 30, 80);
     }
 
+    public static void success(Player player, String message) {
+        show(player, message, TextColor.fromHexString("#55FF55"), TextColor.fromHexString("#284028"), 40, 60, 60);
+    }
+
     private static void show(Player player, String message, TextColor textColor, TextColor backgroundColor, int fadeIn, int stay, int fadeOut) {
         player.showTitle(Title.title(Component.empty().shadowColor(ShadowColor.none()).append(
                 Component.text(Notification.BACKGROUND).font(Font.DEFAULT).color(Notification.safeBackgroundColor(backgroundColor)),

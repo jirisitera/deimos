@@ -5,12 +5,12 @@ import com.japicraft.camera.MapProbe;
 import net.hollowcube.schem.Schematic;
 import net.hollowcube.schem.reader.SchematicReader;
 import net.kyori.adventure.text.Component;
-import net.minestom.server.color.Color;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
+import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class StructureLoader {
+    public static final Tag<MonitorState> TAG = Tag.Transient("monitorState");
     private static final float[][] rotations = new float[][]{
         // computers
         new float[]{0.0F, 0.4226F, 0.0F, 0.9063F},
@@ -46,14 +47,6 @@ public final class StructureLoader {
     };
     private static final ItemStack DEACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer");
     private static final ItemStack CAMERA = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "camera");
-    private static final List<MapProbe.Dot> EXAMPLE_MAP = List.of(
-        new MapProbe.Dot(0.5F, 0.5F),
-        new MapProbe.Dot(0.35F, 0.4F),
-        new MapProbe.Dot(0.65F, 0.4F),
-        new MapProbe.Dot(0.35F, 0.65F, new Color(255, 80, 80)),
-        new MapProbe.Dot(0.65F, 0.65F, new Color(80, 200, 255))
-    );
-    private static final Tag<MonitorState> TAG = Tag.Transient("monitorState");
     private final List<Entity> entities = new ArrayList<>();
 
     public static void load(ClassLoader loader, String path, InstanceContainer instance) {
@@ -88,21 +81,36 @@ public final class StructureLoader {
     }
 
     public static void activate(Player player, int skipIndex) {
-        List<Entity> monitors = player.getTag(StructureLoader.TAG).monitors();
+        MonitorState state = player.getTag(StructureLoader.TAG);
+        if (state == null) return;
+        List<Entity> monitors = state.monitors();
         for (int i = 0; i < 3; i++) {
             if (i == skipIndex) continue;
-            // activate computer after a delay with its own data (0 = map dots, 1 = energy, 2 = camera buttons)
+            // activate computer after a delay with its own data (0 = clock, 1 = energy, 2 = camera buttons)
             MapProbe.activateMonitor(player, i, monitors.get(i), switch (i) {
-                case 0 -> EXAMPLE_MAP;
+                case MapProbe.CLOCK_MONITOR -> List.of(MapProbe.clockDot(0, 0.0F));
                 case 1 -> List.of(MapProbe.energyDot(0, 5, 10));
                 default -> List.of();
             });
         }
     }
 
+    public static void assignBaseEntityData(Player player) {
+        Instance instance = player.getInstance();
+        if (instance != null) {
+            MonitorState state = instance.getTag(TAG);
+            if (state != null) {
+                player.setTag(TAG, state);
+                return;
+            }
+        }
+        player.removeTag(TAG);
+    }
+
     public void spawnAll(InstanceContainer instance) {
         spawn(instance, 0, 3, StructureLoader.DEACTIVATED);
         spawn(instance, 3, 4, StructureLoader.CAMERA);
+        instance.setTag(TAG, new MonitorState(List.copyOf(entities)));
     }
 
     public void spawn(InstanceContainer instance, int offset, int count, ItemStack item) {
@@ -121,9 +129,11 @@ public final class StructureLoader {
     }
 
     public void assignEntityData(Player player) {
-        player.setTag(StructureLoader.TAG, new MonitorState(entities));
+        if (player != null) {
+            player.setTag(StructureLoader.TAG, new MonitorState(List.copyOf(entities)));
+        }
     }
 
-    private record MonitorState(List<Entity> monitors) {
+    public record MonitorState(List<Entity> monitors) {
     }
 }

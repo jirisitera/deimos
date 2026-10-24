@@ -313,27 +313,85 @@ vec4 energyContent(int rowY, vec2 uv) {
     return content;
 }
 
-// ---- Radar monitor ----
-vec4 radarContent(int rowY, vec2 uv) {
+// ---- Clock monitor (left) ----
+// Slot 0 carries (hour, hourProgress, 0), see MapProbe.clockDot. Hour 0 = 12 AM, CLOCK_FINAL_HOUR = 6 AM.
+const int CLOCK_FINAL_HOUR = 6;
+vec4 clockContent(int rowY, vec2 uv) {
     vec4 content = vec4(0.0);
-    float dotRadius = 0.04;
-    for (int i = 0; i < 16; i++) {
-        ivec3 posPixel = ivec3(
-            round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
-        );
-        if (posPixel == ivec3(255, 255, 255)) continue;
-        int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
-        int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
-        vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
-        float dist = length((uv - dotPos) * MONITOR_ASPECT);
-        if (dist <= dotRadius) {
-            vec3 dotColor = texelFetch(
-                InSampler,
-                ivec2(8 + i * 2 + 1, rowY),
-                0
-            ).rgb;
-            float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
-            content = vec4(mix(content.rgb, dotColor, alpha), max(content.a, alpha));
+    ivec3 posPixel = ivec3(round(texelFetch(InSampler, ivec2(8, rowY), 0).rgb * 255.0));
+    int hour = 0;
+    float hourProgress = 0.0;
+    if (posPixel != ivec3(255, 255, 255)) {
+        ivec3 data = ivec3(round(texelFetch(InSampler, ivec2(9, rowY), 0).rgb * 255.0));
+        hour = clamp(data.r, 0, CLOCK_FINAL_HOUR);
+        hourProgress = clamp(float(data.g) / 255.0, 0.0, 1.0);
+    }
+    bool finished = hour >= CLOCK_FINAL_HOUR;
+
+    vec2 local;
+    // 1. "TIME" label
+    const int LABEL[4] = int[](CH_T, CH_I, CH_M, CH_E);
+    int idx = textLine(uv, vec2(0.5, 0.13), 0.1, 4, local);
+    if (idx >= 0) {
+        content = vec4(0.5, 0.58, 0.5, fontGlyph(LABEL[idx], local));
+    }
+
+    // 2. Time readout ("12 AM", "1 AM", ... "6 AM")
+    int chars[5];
+    int charCount = 0;
+    if (hour == 0) {
+        chars[0] = 1;
+        chars[1] = 2;
+        charCount = 2;
+    } else {
+        chars[0] = hour;
+        charCount = 1;
+    }
+    chars[charCount] = CH_SPACE;
+    chars[charCount + 1] = CH_A;
+    chars[charCount + 2] = CH_M;
+    charCount += 3;
+    idx = textLine(uv, vec2(0.5, 0.38), 0.26, charCount, local);
+    if (idx >= 0) {
+        // colon-less clock, so blink the whole readout once the night is over
+        bool blinkOff = finished && fract(GameTime * 1200.0 * 1.5) > 0.6;
+        vec3 textCol = finished ? vec3(0.35, 0.95, 0.4) : vec3(0.85, 0.92, 0.85);
+        content = vec4(textCol, blinkOff ? 0.0 : fontGlyph(chars[idx], local));
+    }
+
+    // 3. Night progress bar: one segment per hour, the current one fills up gradually
+    vec2 barMin = vec2(0.12, 0.62);
+    vec2 barMax = vec2(0.88, 0.82);
+    vec2 border = vec2(0.02, 0.025);
+    if (all(greaterThanEqual(uv, barMin)) && all(lessThanEqual(uv, barMax))) {
+        bool isBorder =
+        uv.x < barMin.x + border.x || uv.x > barMax.x - border.x ||
+        uv.y < barMin.y + border.y || uv.y > barMax.y - border.y;
+        if (isBorder) {
+            content = vec4(vec3(0.45), 1.0);
+        } else {
+            vec2 innerMin = barMin + border * 1.8;
+            vec2 innerMax = barMax - border * 1.8;
+            if (all(greaterThanEqual(uv, innerMin)) && all(lessThanEqual(uv, innerMax))) {
+                float normX = (uv.x - innerMin.x) / (innerMax.x - innerMin.x);
+                float segCoord = normX * float(CLOCK_FINAL_HOUR);
+                int seg = clamp(int(floor(segCoord)), 0, CLOCK_FINAL_HOUR - 1);
+                float segFrac = fract(segCoord);
+                if (segFrac >= 0.08 && segFrac <= 0.92) {
+                    float fill = seg < hour ? 1.0 : seg == hour ? hourProgress : 0.0;
+                    bool filled = (segFrac - 0.08) / 0.84 <= fill && fill > 0.0;
+                    if (filled) {
+                        vec3 segCol = finished ? vec3(0.35, 0.95, 0.4) : vec3(0.75, 0.82, 0.75);
+                        float localY = (uv.y - innerMin.y) / (innerMax.y - innerMin.y);
+                        if (localY < 0.18) {
+                            segCol = mix(segCol, vec3(1.0), 0.35);
+                        }
+                        content = vec4(segCol, 1.0);
+                    } else {
+                        content = vec4(vec3(0.08), 1.0);
+                    }
+                }
+            }
         }
     }
     return content;
@@ -393,7 +451,7 @@ vec4 monitorContent(int monitorIndex, int rowY, bool lobby, bool lobbyHovered, v
     if (lobby) return lobbyContent(uv, lobbyHovered);
     if (monitorIndex == 1) return energyContent(rowY, uv);
     if (monitorIndex == 2) return cameraButtonsContent(monitorIndex, uv);
-    return radarContent(rowY, uv);
+    return clockContent(rowY, uv);
 }
 
 // ---- CRT tube (ported from the old tv.glsl) ----

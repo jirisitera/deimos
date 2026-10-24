@@ -43,37 +43,8 @@ vec3 monitorGlow(int monitorIndex, vec2 monitorUv) {
     if (lobbyActive(rowY)) {
         return vec3(0.22);
     }
-    if (monitorIndex != 0) {
-        return vec3(0.0);
-    }
-
-    // Radar dots
-    vec2 aspect = vec2(11.0 / 8.0, 1.0);
-    float dotRadius = 0.04;
-    vec3 screenCol = vec3(0.0);
-    for (int i = 0; i < 16; i++) {
-        ivec3 posPixel = ivec3(
-            round(texelFetch(InSampler, ivec2(8 + i * 2, rowY), 0).rgb * 255.0)
-        );
-        if (posPixel == ivec3(255, 255, 255)) {
-            continue;
-        }
-
-        int rawX = (posPixel.r << 4) | (posPixel.g >> 4);
-        int rawY = ((posPixel.g & 15) << 8) | posPixel.b;
-        vec2 dotPos = vec2(float(rawX), float(rawY)) / 4094.0;
-        float dist = length((curved - dotPos) * aspect);
-        if (dist <= dotRadius) {
-            vec3 dotColor = texelFetch(
-                InSampler,
-                ivec2(8 + i * 2 + 1, rowY),
-                0
-            ).rgb;
-            float alpha = 1.0 - smoothstep(dotRadius * 0.65, dotRadius, dist);
-            screenCol = mix(screenCol, dotColor, alpha);
-        }
-    }
-    return screenCol;
+    // In-game screens (clock, energy, camera buttons) don't glow
+    return vec3(0.0);
 }
 
 // Sample bloom input: extracts bright highlights in the first pass (Bright >= 0.5),

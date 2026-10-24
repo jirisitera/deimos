@@ -6,6 +6,7 @@ import com.japicraft.camera.MapProbe;
 import com.japicraft.game.Director;
 import com.japicraft.game.Lobby;
 import com.japicraft.instance.InstanceManager;
+import com.japicraft.instance.StructureLoader;
 import com.japicraft.server.PostEffect;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.minestom.server.MinecraftServer;
@@ -32,6 +33,7 @@ public final class PlayerSetupManager {
         // join event
         MinecraftServer.getGlobalEventHandler().addListener(PlayerSpawnEvent.class, event -> {
             Player player = event.getPlayer();
+            StructureLoader.assignBaseEntityData(player);
             player.sendPacket(new PostEffectsPacket(List.of(PostEffect.HUD)));
             player.setInvisible(true);
             CameraAnchor.attach(player);

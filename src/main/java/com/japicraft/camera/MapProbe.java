@@ -20,6 +20,8 @@ public final class MapProbe {
     public static final int MAX_DOTS = 16;
     // Lobby "YES" button on the main (center) monitor, measured in monitor-height units. Must match cursor.fsh.
     public static final int LOBBY_MONITOR = 1;
+    // Left monitor showing the night clock (12 AM -> 6 AM)
+    public static final int CLOCK_MONITOR = 0;
     private static final float MAX_COORDINATE = 4094.0F;
     private static final float BUTTON_HALF_SIZE = 0.18F;
     private static final float BUTTON_CENTER = 0.22F;
@@ -150,6 +152,15 @@ public final class MapProbe {
         setDots(player, 1, energyDot(percent, usage, maxUsage));
     }
 
+    public static Dot clockDot(int hour, float progress) {
+        // r stays <= 6, so this never clashes with the lobby marker in lobbyDots()
+        return new Dot(0.0F, 0.0F, new Color(Math.clamp(hour, 0, 6), Math.round(Math.clamp(progress, 0.0F, 1.0F) * 255.0F), 0));
+    }
+
+    public static void setClock(Player player, int hour, float progress) {
+        setDots(player, CLOCK_MONITOR, clockDot(hour, progress));
+    }
+
     public static void updateCursor(Player player) {
         MonitorDesk desk = player.getTag(TAG);
         if (desk == null) {
@@ -219,10 +230,6 @@ public final class MapProbe {
     public record Dot(float x, float y, Color color) {
         public Dot {
             Objects.requireNonNull(color, "color");
-        }
-
-        public Dot(float x, float y) {
-            this(x, y, DEFAULT_COLOR);
         }
     }
 
