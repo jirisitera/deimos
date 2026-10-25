@@ -23,6 +23,11 @@ public final class Eris {
     public static final ComponentLogger LOGGER = ComponentLogger.logger(Eris.class);
     public static CommandSender CONSOLE;
 
+    // TODO:
+    // - numbers on keyboard open cameras
+    // - leaning also moves avatar hands
+    // - fix node alignment
+
     void main() {
         MinecraftServer server = MinecraftServer.init(new Auth.Online());
 

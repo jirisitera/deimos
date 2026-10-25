@@ -10,6 +10,7 @@ import com.japicraft.server.Notification;
 import com.japicraft.server.PostEffect;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.text.Component;
 import net.minestom.server.entity.Player;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.network.packet.server.common.PostEffectsPacket;
@@ -125,6 +126,7 @@ public final class Director {
         if (clockUpdateTicks >= CLOCK_UPDATE_TICKS) {
             clockUpdateTicks = 0;
             syncClock(player);
+            player.sendActionBar(Component.text("Press A | D to lean left | right"));
         }
     }
 
