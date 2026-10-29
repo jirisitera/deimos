@@ -3,13 +3,7 @@ package com.japicraft.game;
 import net.minestom.server.color.Color;
 import net.minestom.server.entity.EntityType;
 
-/**
- * Archetype definition for an ActionBody.
- *
- * @param cameraAvoidanceWeight How strongly this enemy avoids cameras the player checks often (0 = ignores, 2+ = very sneaky).
- * @param transitTicks          How many ticks this enemy remains vanished while traveling between nodes (0 = instant vanish-and-reappear).
- */
-public record ActionBodyType(
+public record EnemyType(
     String id,
     String displayName,
     int baseMoveIntervalTicks,
@@ -21,7 +15,7 @@ public record ActionBodyType(
     EntityType entityType,
     int transitTicks
 ) {
-    public static final ActionBodyType STALKER = new ActionBodyType(
+    public static final EnemyType STALKER = new EnemyType(
         "stalker",
         "The Stalker",
         90,                     // moves every 4.5s
@@ -33,7 +27,7 @@ public record ActionBodyType(
         EntityType.ENDERMAN,
         20                      // 1.0s vanish transit duration
     );
-    public static final ActionBodyType LURKER = new ActionBodyType(
+    public static final EnemyType LURKER = new EnemyType(
         "lurker",
         "The Lurker",
         130,                    // slower approach (6.5s)
@@ -45,7 +39,7 @@ public record ActionBodyType(
         EntityType.ENDERMAN,
         30                      // 1.5s vanish transit duration (heavy stalker)
     );
-    public static final ActionBodyType SHADE = new ActionBodyType(
+    public static final EnemyType SHADE = new EnemyType(
         "shade",
         "The Shade",
         75,                     // fast mover (3.75s)
@@ -58,7 +52,7 @@ public record ActionBodyType(
         10                      // 0.5s quick ghostly vanish transit
     );
 
-    public ActionBodyType(
+    public EnemyType(
         String id,
         String displayName,
         int baseMoveIntervalTicks,

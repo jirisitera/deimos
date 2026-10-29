@@ -1,4 +1,4 @@
-package com.japicraft.player;
+package com.japicraft.camera;
 
 import net.minestom.server.entity.Player;
 import net.minestom.server.network.packet.client.ClientPacket;

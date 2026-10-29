@@ -1,8 +1,9 @@
 package com.japicraft.game;
 
 import com.japicraft.camera.CameraAnchor;
-import com.japicraft.game.route.PathNode;
-import com.japicraft.game.route.Route;
+import com.japicraft.controller.DoorController;
+import com.japicraft.route.PathNode;
+import com.japicraft.route.Route;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.coordinate.Pos;
@@ -15,13 +16,13 @@ import net.minestom.server.particle.Particle;
 
 import java.util.List;
 
-public class ActionBody {
+public class Enemy {
     // Anti-cheese: Door must be held closed for at least 25 ticks (~1.25s) to repel an enemy,
     // preventing 1-tick door flicking to save battery.
     private static final int DOOR_HOLD_TO_WARD_TICKS = 25;
     private static final int WARDED_COOLDOWN_TICKS = 160;
     private static final int RETREAT_VANISH_TICKS = 25;
-    private final ActionBodyType type;
+    private final EnemyType type;
     private final Route route;
     private final String startNodeId;
     private PathNode currentNode;
@@ -31,12 +32,12 @@ public class ActionBody {
     private int observedTicks = 0;
     private int doorWaitTicks = 0;
     private int doorBlockedTicks = 0;
-    private int moveCooldownTicks = 0;
+    private int moveCooldownTicks;
     private int wardedCooldownTicks = 0;
     private int transitTicks = 0;
     private int retreatDelayTicks = 0;
 
-    public ActionBody(ActionBodyType type, Route route, String startNodeId) {
+    public Enemy(EnemyType type, Route route, String startNodeId) {
         this.type = type;
         this.route = route;
         this.startNodeId = startNodeId;
@@ -44,7 +45,7 @@ public class ActionBody {
         this.moveCooldownTicks = type.baseMoveIntervalTicks();
     }
 
-    public ActionBodyType type() {
+    public EnemyType type() {
         return type;
     }
 

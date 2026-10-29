@@ -1,5 +1,6 @@
 package com.japicraft.server;
 
+import com.japicraft.constants.Font;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.ShadowColor;
 import net.kyori.adventure.text.format.TextColor;

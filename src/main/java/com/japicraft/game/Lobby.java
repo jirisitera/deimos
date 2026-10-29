@@ -1,8 +1,8 @@
 package com.japicraft.game;
 
 import com.japicraft.camera.MapProbe;
-import com.japicraft.instance.StructureLoader;
-import com.japicraft.player.PlayerSetupManager;
+import com.japicraft.environment.StructureLoader;
+import com.japicraft.events.PlayerSetupManager;
 import com.japicraft.server.Notification;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
@@ -42,7 +42,7 @@ public final class Lobby {
         StructureLoader.activate(player, MapProbe.LOBBY_MONITOR);
 
         Director director = Director.createDefault();
-        player.setTag(PlayerSetupManager.DIRECTOR_TAG, director);
+        player.setTag(Director.TAG, director);
         if (player.getInstance() instanceof InstanceContainer container) {
             director.start(container);
             director.doors().toggleLeft(player, container);

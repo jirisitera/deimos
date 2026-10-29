@@ -1,12 +1,16 @@
 package com.japicraft.skin;
 
 import com.japicraft.Eris;
+import com.japicraft.environment.InstanceManager;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import net.kyori.adventure.resource.ResourcePackInfo;
 import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.text.Component;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
+import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.network.player.PlayerSocketConnection;
 
 import java.io.IOException;
@@ -30,12 +34,12 @@ public class SkinResourcePackServer {
         try {
             start();
         } catch (Exception e) {
-            Eris.LOGGER.error("Failed to start skin resource pack server", e);
+            Eris.LOGGER.error("Failed to start skin resource pack server.", e);
         }
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
-    public static UUID getPackIdForPlayer(UUID playerUuid) {
+    public static UUID getPackId(UUID playerUuid) {
         return UUID.nameUUIDFromBytes(("eris-skin-" + playerUuid).getBytes());
     }
 
@@ -47,14 +51,14 @@ public class SkinResourcePackServer {
         httpServer.createContext("/pack/", this::handlePackRequest);
         httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         httpServer.start();
-        Eris.LOGGER.info("Resource pack HTTP server started on {}:{}", HOST, PORT);
+        Eris.LOGGER.info("Resource pack HTTP server started on {}:{}.", HOST, PORT);
     }
 
     public synchronized void stop() {
         if (httpServer != null) {
             httpServer.stop(0);
             httpServer = null;
-            Eris.LOGGER.info("Resource pack HTTP server stopped");
+            Eris.LOGGER.info("Resource pack HTTP server stopped.");
         }
     }
 
@@ -106,21 +110,25 @@ public class SkinResourcePackServer {
         exchange.close();
     }
 
-    public void sendTo(Player player) {
+    public void send(Player player) {
         try {
-            UUID packId = getPackIdForPlayer(player.getUuid());
+            UUID packId = getPackId(player.getUuid());
             SkinResourcePack.PackData packData = SkinResourcePack.create(packId, skinFetcher.fetchSkinPng(player));
             hostedPacks.put(packId, packData);
 
             player.sendResourcePacks(ResourcePackRequest.resourcePackRequest()
                 .packs(ResourcePackInfo.resourcePackInfo(packId, URI.create("http://" + resolveHost(player) + ":" + PORT + "/pack/" + packId + ".zip"), packData.sha1Hex()))
                 .required(true)
-                .prompt(Component.text(""))
+                .prompt(Component.empty())
                 .build()
             );
         } catch (Exception e) {
-            Eris.LOGGER.error("Failed to generate and send skin resource pack to {}", player.getUsername(), e);
+            Eris.LOGGER.error("Failed to generate and send skin resource pack to {}.", player.getUsername(), e);
         }
+    }
+    public void register() {
+        MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> send(event.getPlayer()));
+        MinecraftServer.getGlobalEventHandler().addListener(PlayerDisconnectEvent.class, event -> removePack(event.getPlayer().getUuid()));
     }
 
     public String resolveHost(Player player) {
@@ -137,8 +145,7 @@ public class SkinResourcePackServer {
     }
 
     public void removePack(UUID playerUuid) {
-        UUID packId = getPackIdForPlayer(playerUuid);
-        hostedPacks.remove(packId);
+        hostedPacks.remove(getPackId(playerUuid));
         skinFetcher.invalidate(playerUuid);
     }
 }

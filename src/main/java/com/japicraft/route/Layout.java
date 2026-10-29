@@ -1,4 +1,4 @@
-package com.japicraft.game.route;
+package com.japicraft.route;
 
 import net.minestom.server.coordinate.Pos;
 
@@ -6,7 +6,7 @@ import net.minestom.server.coordinate.Pos;
  * Facility waypoint graph matching the physical office and camera layouts.
  * To add new rooms or paths, register a {@link PathNode} with {@code addNode} and wire it with {@code connect}.
  */
-public final class EnemyRoutes {
+public final class Layout {
     public static final Route FACILITY_GRAPH = new Route()
         // --- Deep Spawn Nodes ---
         .addNode(new PathNode("storage_deep_left", new Pos(3.5, 11.0, 24.0, 180.0F, 0.0F), -1, false, true))
@@ -51,7 +51,4 @@ public final class EnemyRoutes {
 
         .connect("door_approach_left", "office_breach_left")
         .connect("door_approach_right", "office_breach_right");
-
-    private EnemyRoutes() {
-    }
 }

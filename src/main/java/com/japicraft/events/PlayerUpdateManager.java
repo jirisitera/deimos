@@ -1,13 +1,13 @@
-package com.japicraft.player;
+package com.japicraft.events;
 
 import com.japicraft.camera.Avatar;
 import com.japicraft.camera.CameraAnchor;
-import com.japicraft.camera.CursorProbe;
 import com.japicraft.camera.MapProbe;
+import com.japicraft.camera.ClientView;
 import com.japicraft.game.Director;
-import com.japicraft.server.Button;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.instance.InstanceContainer;
@@ -19,7 +19,7 @@ public final class PlayerUpdateManager {
             CameraAnchor.update(player);
             if (CameraAnchor.isMainCamera(player)) Avatar.update(player);
 
-            Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+            Director director = player.getTag(Director.TAG);
             if (director != null && player.getInstance() instanceof InstanceContainer container) {
                 director.tick(player, container);
             }
@@ -34,10 +34,11 @@ public final class PlayerUpdateManager {
             CameraAnchor.updateTarget(player);
             if (CameraAnchor.getCameraPosition(player) != null) {
                 MapProbe.updateCursor(player);
-            } else {
-                CursorProbe.update(player);
-                Button.checkForHovers(player, CursorProbe.screenPosition(player));
             }
+        });
+
+        MinecraftServer.getGlobalEventHandler().addListener(PlayerChangeHeldSlotEvent.class, event -> {
+            CameraAnchor.setCamera(event.getPlayer(), event.getNewSlot() + 1);
         });
     }
 }

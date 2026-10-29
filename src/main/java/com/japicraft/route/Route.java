@@ -1,4 +1,4 @@
-package com.japicraft.game.route;
+package com.japicraft.route;
 
 import java.util.*;
 

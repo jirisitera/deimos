@@ -1,4 +1,4 @@
-package com.japicraft.player;
+package com.japicraft.events;
 
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.MapProbe;
@@ -27,7 +27,7 @@ public final class PlayerInputManager {
                     return;
                 }
 
-                Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+                Director director = player.getTag(Director.TAG);
                 if (director != null && director.isGameOver()) {
                     director.resetToLobby(player);
                     return;
@@ -63,7 +63,7 @@ public final class PlayerInputManager {
             if (!CameraAnchor.isMainCamera(player)) {
                 player.scheduler().scheduleTask(() -> {
                     if (CameraAnchor.isMainCamera(player)) return;
-                    Director director = player.getTag(PlayerSetupManager.DIRECTOR_TAG);
+                    Director director = player.getTag(Director.TAG);
                     if (director != null && director.isCameraJammed(CameraAnchor.getActiveCamera(player))) {
                         return;
                     }
@@ -75,9 +75,6 @@ public final class PlayerInputManager {
 
         MinecraftServer.getGlobalEventHandler().addListener(PlayerInputEvent.class, event -> {
             Player player = event.getPlayer();
-            if (event.hasPressedForwardKey()) {
-
-            }
             CameraAnchor.updateInput(player);
         });
     }

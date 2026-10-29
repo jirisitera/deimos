@@ -1,7 +1,6 @@
 package com.japicraft.camera;
 
-import com.japicraft.instance.InstanceManager;
-import com.japicraft.player.ClientView;
+import com.japicraft.environment.InstanceManager;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;

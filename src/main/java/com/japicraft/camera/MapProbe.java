@@ -1,7 +1,6 @@
 package com.japicraft.camera;
 
 import com.japicraft.Eris;
-import com.japicraft.player.ClientView;
 import net.kyori.adventure.util.RGBLike;
 import net.minestom.server.color.Color;
 import net.minestom.server.entity.Entity;
@@ -45,19 +44,15 @@ public final class MapProbe {
     }
 
     private static int encodeAngle(float angle) {
-        return Math.round(Math.clamp(angle, 0.0F, 360.0F) / 360.0F * 65535.0F);
-    }
-
-    private static int encodeYaw(float yaw) {
-        return encodeAngle(yaw + 180.0F);
+        return Math.round(Math.clamp(angle + 180.0F, 0.0F, 360.0F) / 360.0F * 65535.0F);
     }
 
     private static int cursorKey(Player player) {
         float yawBias = ClientView.wrapDegrees(ClientView.mouseYaw(player) - ClientView.yaw(player));
         float pitchBias = ClientView.wrapDegrees(ClientView.mousePitch(player) - ClientView.pitch(player));
         // Quantize to 0.05 degrees so tiny floating-point jitter inside the monitors doesn't trigger item updates
-        int yaw = encodeYaw(Math.round(yawBias * 20.0F) / 20.0F);
-        int pitch = encodeYaw(Math.round(pitchBias * 20.0F) / 20.0F);
+        int yaw = encodeAngle(Math.round(yawBias * 20.0F) / 20.0F);
+        int pitch = encodeAngle(Math.round(pitchBias * 20.0F) / 20.0F);
         return (yaw << 16) | pitch;
     }
 
@@ -180,17 +175,24 @@ public final class MapProbe {
         }
     }
 
+    public static ScreenPosition screenPosition(Player player) {
+        float x = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F), 0.0F, 1.0F);
+        float y = Math.clamp((ClientView.mousePitch(player) + ClientView.MAX_CURSOR_PITCH) / (ClientView.MAX_CURSOR_PITCH * 2.0F), 0.0F, 1.0F);
+        return new ScreenPosition(x, y);
+    }
+
     /**
      * Returns the camera button (0..3, row-major: top-left, top-right, bottom-left, bottom-right)
      * under the cursor on the right monitor, or -1. Must match buttonAt() in cursor.fsh.
      */
     public static int hoveredButton(Player player) {
-        float virtualX = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
+        ScreenPosition screen = screenPosition(player);
+        float virtualX = Math.clamp(screen.x() * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
         if ((int) Math.floor(virtualX) != 2) {
             return -1;
         }
         float u = virtualX - (float) Math.floor(virtualX);
-        float v = Math.clamp((ClientView.mousePitch(player) + ClientView.MAX_CURSOR_PITCH) / (ClientView.MAX_CURSOR_PITCH * 2.0F), 0.0F, 1.0F);
+        float v = screen.y();
         float px = (u - 0.5F) * (11.0F / 8.0F);
         float py = v - 0.5F;
         float dx = Math.abs(px) - BUTTON_CENTER;
@@ -212,15 +214,19 @@ public final class MapProbe {
      * Returns true if the cursor is over the lobby YES button on the main monitor. Must match lobbyButton() in cursor.fsh.
      */
     public static boolean isLobbyButtonHovered(Player player) {
-        float virtualX = Math.clamp((ClientView.mouseYaw(player) + ClientView.MAX_CURSOR_YAW) / (ClientView.MAX_CURSOR_YAW * 2.0F) * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
+        ScreenPosition screen = screenPosition(player);
+        float virtualX = Math.clamp(screen.x() * MONITOR_COUNT, 0.0F, MONITOR_COUNT - 0.0001F);
         if ((int) Math.floor(virtualX) != LOBBY_MONITOR) {
             return false;
         }
         float u = virtualX - (float) Math.floor(virtualX);
-        float v = Math.clamp((ClientView.mousePitch(player) + ClientView.MAX_CURSOR_PITCH) / (ClientView.MAX_CURSOR_PITCH * 2.0F), 0.0F, 1.0F);
+        float v = screen.y();
         float px = (u - 0.5F) * (11.0F / 8.0F);
         float py = v - LOBBY_BUTTON_CENTER_Y;
         return Math.abs(px) <= LOBBY_BUTTON_HALF_WIDTH && Math.abs(py) <= LOBBY_BUTTON_HALF_HEIGHT;
+    }
+
+    public record ScreenPosition(float x, float y) {
     }
 
     public static void detach(Player player) {

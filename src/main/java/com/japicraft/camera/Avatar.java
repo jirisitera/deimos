@@ -1,7 +1,6 @@
 package com.japicraft.camera;
 
 import com.japicraft.Eris;
-import com.japicraft.player.ClientView;
 import com.japicraft.skin.SkinFetcher;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -111,7 +110,7 @@ public final class Avatar {
     }
 
     private static ClientView.View updateRightHand(Player player) {
-        CursorProbe.ScreenPosition cursor = CursorProbe.screenPosition(player);
+        MapProbe.ScreenPosition cursor = MapProbe.screenPosition(player);
         float normalX = (cursor.x() - 0.5F) * 2.0F;
         float normalY = (cursor.y() - 0.5F) * 2.0F;
         return new ClientView.View(-normalX * RIGHT_YAW_ROTATION, -normalY * RIGHT_PITCH_ROTATION);

@@ -2,18 +2,19 @@ package com.japicraft.game;
 
 import com.japicraft.camera.CameraAnchor;
 import com.japicraft.camera.MapProbe;
-import com.japicraft.game.route.EnemyRoutes;
-import com.japicraft.game.route.PathNode;
-import com.japicraft.game.route.Route;
-import com.japicraft.player.PlayerSetupManager;
+import com.japicraft.controller.DoorController;
+import com.japicraft.route.Layout;
+import com.japicraft.route.PathNode;
+import com.japicraft.route.Route;
+import com.japicraft.events.PlayerSetupManager;
 import com.japicraft.server.Notification;
 import com.japicraft.server.PostEffect;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
-import net.kyori.adventure.text.Component;
 import net.minestom.server.entity.Player;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.network.packet.server.common.PostEffectsPacket;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.TaskSchedule;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>
  */
 public final class Director {
+    public static final Tag<Director> TAG = Tag.Transient("enemyDirector");
     // anti-cheese tuning
     private static final int CAMERA_STABILIZE_TICKS = 8;      // 0.4s delay after switching before camera can ward
     private static final int STARE_WARNING_TICKS = 100;       // 5.0s continuous stare -> warning audio
@@ -36,7 +38,7 @@ public final class Director {
     private static final int CLOCK_HOUR_TICKS = 1200;
     private static final int CLOCK_FINAL_HOUR = 6;
     private static final int CLOCK_UPDATE_TICKS = 10;
-    private final List<ActionBody> bodies = new ArrayList<>();
+    private final List<Enemy> bodies = new ArrayList<>();
     private final DoorController doors = new DoorController();
     // Camera usage tracking (1-indexed for cameras 1..4)
     private final float[] cameraHeat = new float[5];
@@ -55,17 +57,17 @@ public final class Director {
     public static Director createDefault() {
         Director director = new Director();
         // Adding new enemies is a single line referencing any node ID in FACILITY_GRAPH:
-        director.spawnEnemy(ActionBodyType.STALKER, "storage_deep_left");
-        director.spawnEnemy(ActionBodyType.LURKER, "generator_deep_right");
+        director.spawnEnemy(EnemyType.STALKER, "storage_deep_left");
+        director.spawnEnemy(EnemyType.LURKER, "generator_deep_right");
         return director;
     }
 
-    public void spawnEnemy(ActionBodyType type, String startNodeId) {
-        spawnEnemy(type, EnemyRoutes.FACILITY_GRAPH, startNodeId);
+    public void spawnEnemy(EnemyType type, String startNodeId) {
+        spawnEnemy(type, Layout.FACILITY_GRAPH, startNodeId);
     }
 
-    public void spawnEnemy(ActionBodyType type, Route route, String startNodeId) {
-        bodies.add(new ActionBody(type, route, startNodeId));
+    public void spawnEnemy(EnemyType type, Route route, String startNodeId) {
+        bodies.add(new Enemy(type, route, startNodeId));
     }
 
     public DoorController doors() {
@@ -92,7 +94,7 @@ public final class Director {
     }
 
     public void start(InstanceContainer instance) {
-        for (ActionBody body : bodies) {
+        for (Enemy body : bodies) {
             body.spawn(instance);
         }
     }
@@ -117,7 +119,7 @@ public final class Director {
         updatePacing();
 
         // tick Action Bodies
-        for (ActionBody body : bodies) {
+        for (Enemy body : bodies) {
             body.tick(player, this, doors, instance);
         }
 
@@ -126,7 +128,6 @@ public final class Director {
         if (clockUpdateTicks >= CLOCK_UPDATE_TICKS) {
             clockUpdateTicks = 0;
             syncClock(player);
-            player.sendActionBar(Component.text("Press A | D to lean left | right"));
         }
     }
 
@@ -210,7 +211,7 @@ public final class Director {
         Notification.warn(player, "CAMERA 0" + activeCam + " SIGNAL OVERLOAD");
     }
 
-    public PathNode chooseNextNode(ActionBody body, List<PathNode> candidates) {
+    public PathNode chooseNextNode(Enemy body, List<PathNode> candidates) {
         if (candidates.isEmpty()) return null;
         if (candidates.size() == 1) return candidates.getFirst();
 
@@ -234,7 +235,7 @@ public final class Director {
             // Slight penalty if another enemy is already standing on or traveling to that node to encourage spreading out
             boolean occupied = bodies.stream()
                 .anyMatch(other -> other != body
-                    && other.state() != ActionBody.State.DORMANT
+                    && other.state() != Enemy.State.DORMANT
                     && (other.currentNode() == candidate || other.targetNode() == candidate));
             if (occupied) {
                 score -= 4.0F;
@@ -252,7 +253,7 @@ public final class Director {
     }
 
     private void updatePacing() {
-        boolean anyAtDoor = bodies.stream().anyMatch(b -> b.state() == ActionBody.State.WAITING_AT_DOOR);
+        boolean anyAtDoor = bodies.stream().anyMatch(b -> b.state() == Enemy.State.WAITING_AT_DOOR);
 
         switch (phase) {
             case BUILDUP -> {
@@ -280,20 +281,20 @@ public final class Director {
         }
     }
 
-    public boolean canAdvance(ActionBody requester) {
+    public boolean canAdvance(Enemy requester) {
         if (phase == PacingPhase.RECOVERY) {
             return false;
         }
 
         // Avoid dogpiling: if an enemy is already at the office door or traveling there, others hold back in the corridor
         boolean anotherAlreadyAtDoor = bodies.stream()
-            .anyMatch(b -> b != requester && (b.state() == ActionBody.State.WAITING_AT_DOOR
-                || (b.state() == ActionBody.State.RELOCATING && b.targetNode() != null && b.targetNode().isDoorApproach())));
+            .anyMatch(b -> b != requester && (b.state() == Enemy.State.WAITING_AT_DOOR
+                || (b.state() == Enemy.State.RELOCATING && b.targetNode() != null && b.targetNode().isDoorApproach())));
 
         return !anotherAlreadyAtDoor || !requester.currentNode().isDoorApproach();
     }
 
-    public void onBreach(ActionBody intruder, Player player) {
+    public void onBreach(Enemy intruder, Player player) {
         if (gameOver) return;
         gameOver = true;
 
@@ -344,7 +345,7 @@ public final class Director {
         gameOver = true;
 
         cleanup();
-        player.removeTag(PlayerSetupManager.DIRECTOR_TAG);
+        player.removeTag(Director.TAG);
 
         if (player.getInstance() instanceof InstanceContainer container) {
             doors.reset(container);
@@ -361,7 +362,7 @@ public final class Director {
 
     public void cleanup() {
         cleanedUp = true;
-        for (ActionBody body : bodies) {
+        for (Enemy body : bodies) {
             body.despawn();
         }
         bodies.clear();

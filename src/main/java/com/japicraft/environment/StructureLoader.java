@@ -1,4 +1,4 @@
-package com.japicraft.instance;
+package com.japicraft.environment;
 
 import com.japicraft.Eris;
 import com.japicraft.camera.MapProbe;

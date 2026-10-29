@@ -2,10 +2,10 @@ package com.japicraft;
 
 import com.japicraft.command.InstanceCommand;
 import com.japicraft.command.StopCommand;
-import com.japicraft.player.PlayerInputManager;
-import com.japicraft.player.PlayerSetupManager;
-import com.japicraft.player.PlayerUpdateManager;
-import com.japicraft.server.GlobalResourcePack;
+import com.japicraft.environment.InstanceManager;
+import com.japicraft.events.PlayerInputManager;
+import com.japicraft.events.PlayerSetupManager;
+import com.japicraft.events.PlayerUpdateManager;
 import com.japicraft.server.ServerListManager;
 import com.japicraft.skin.SkinResourcePackServer;
 import net.kyori.adventure.text.Component;
@@ -70,12 +70,15 @@ public final class Eris {
     }
 
     private void registerManagers() {
-        // player managers
-        PlayerSetupManager.register(new SkinResourcePackServer());
+
+        new SkinResourcePackServer().register();
+
+        PlayerSetupManager.register();
         PlayerUpdateManager.register();
         PlayerInputManager.register();
-        // server managers
+
+        InstanceManager.register();
         ServerListManager.register();
-        GlobalResourcePack.register();
+        //GlobalResourcePack.register();
     }
 }

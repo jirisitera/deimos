@@ -1,4 +1,4 @@
-package com.japicraft.game;
+package com.japicraft.controller;
 
 import com.japicraft.camera.MapProbe;
 import com.japicraft.server.PostEffect;
