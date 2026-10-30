@@ -1,6 +1,6 @@
 package com.japicraft.server;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import com.japicraft.camera.CameraAnchor;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.entity.Player;
@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PostEffect {
-    public static final Key HUD = Key.key(Eris.NAMESPACE, "hud");
-    public static final Key CAMERA = Key.key(Eris.NAMESPACE, "security_camera");
-    public static final Key CAMERA_SWITCH = Key.key(Eris.NAMESPACE, "camera_switch");
-    public static final Key BLACKOUT = Key.key(Eris.NAMESPACE, "blackout");
+    public static final Key HUD = Key.key(Deimos.NAMESPACE, "hud");
+    public static final Key CAMERA = Key.key(Deimos.NAMESPACE, "security_camera");
+    public static final Key CAMERA_SWITCH = Key.key(Deimos.NAMESPACE, "camera_switch");
+    public static final Key BLACKOUT = Key.key(Deimos.NAMESPACE, "blackout");
     public static final Tag<Boolean> BLACKOUT_TAG = Tag.Transient("playerBlackout");
 
     public static void applyBlackout(Player player) {

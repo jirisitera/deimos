@@ -6,7 +6,7 @@
 #include <minecraft:fog.glsl>
 #include <minecraft:dynamictransforms.glsl>
 #include <minecraft:oit.glsl>
-#include <eris:pbr.glsl>
+#include <deimos:pbr.glsl>
 // @formatter:on
 
 const int PBR_MARK_MONITOR_DATA = -500;
@@ -73,7 +73,7 @@ void main() {
 
     // Monitor screen rendering (red channel encodes monitor ID: 250, 251, 252).
     // The screen UV is stored at 16-bit precision in G/B, U on even and V on odd checkerboard pixels
-    // (decoded by eris:monitor_data.glsl in the post chain).
+    // (decoded by deimos:monitor_data.glsl in the post chain).
     if (pbrMark <= -600 && pbrMark >= -602) {
         #ifdef OIT_ALPHA_ONLY
         discard;

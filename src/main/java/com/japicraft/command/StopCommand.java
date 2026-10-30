@@ -6,7 +6,7 @@ import net.minestom.server.command.builder.Command;
 import net.minestom.server.entity.Player;
 
 public class StopCommand extends Command {
-    private static final Component KICK_MESSAGE = Component.text("Eris is shutting down.").appendNewline().append(Component.text("Please wait a moment before reconnecting."));
+    private static final Component KICK_MESSAGE = Component.text("Deimos is shutting down.").appendNewline().append(Component.text("Please wait a moment before reconnecting."));
 
     public StopCommand() {
         super("stop");

@@ -1,6 +1,6 @@
 package com.japicraft.camera;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.kyori.adventure.util.RGBLike;
 import net.minestom.server.color.Color;
 import net.minestom.server.entity.Entity;
@@ -29,7 +29,7 @@ public final class MapProbe {
     private static final float LOBBY_BUTTON_HALF_HEIGHT = 0.11F;
     // Slot 0 marker that switches a monitor into the lobby screen (energy dots never use g > 16, so no clash)
     private static final Color LOBBY_MARKER = new Color(91, 126, 209);
-    private static final String COMPUTER_ON_MODEL = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer_on";
+    private static final String COMPUTER_ON_MODEL = Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "computer_on";
     private static final Color DEFAULT_COLOR = new Color(255, 255, 255);
     private static final Color UNUSED_POSITION = new Color(255, 255, 255);
     private static final Tag<MonitorDesk> TAG = Tag.Transient("monitorDesk");

@@ -1,0 +1,67 @@
+{
+    "rain": {
+        "sounds": [
+            {
+                "name": "deimos:rain",
+                "stream": true
+            }
+        ]
+    },
+    "thunder": {
+        "sounds": [
+            "deimos:strike1",
+            "deimos:strike2",
+            "deimos:strike3",
+            "deimos:strike4",
+            "deimos:strike5",
+            "deimos:strike6"
+        ]
+    },
+    "drone1": {
+        "sounds": [
+            {
+                "name": "deimos:drone1",
+                "stream": true
+            }
+        ]
+    },
+    "drone2": {
+        "sounds": [
+            {
+                "name": "deimos:drone2",
+                "stream": true
+            }
+        ]
+    },
+    "hum": {
+        "sounds": [
+            {
+                "name": "deimos:hum",
+                "stream": true
+            }
+        ]
+    },
+    "creak": {
+        "sounds": [
+            "deimos:creak"
+        ]
+    },
+    "groan": {
+        "sounds": [
+            "deimos:groan1",
+            "deimos:groan2",
+            "deimos:groan3",
+            "deimos:groan4",
+            "deimos:groan5"
+        ]
+    },
+    "bang": {
+        "sounds": [
+            "deimos:bang1",
+            "deimos:bang2",
+            "deimos:bang3",
+            "deimos:bang4",
+            "deimos:bang5"
+        ]
+    }
+}

@@ -31,7 +31,7 @@ void main() {
     executeAlphaOnlyPhase(gl_FragCoord.z, color.a);
     #else
     // @formatter:off
-    #include <eris:lines.glsl>
+    #include <deimos:lines.glsl>
     // @formatter:on
     fragColor = calculateFinalColor(color);
     #endif

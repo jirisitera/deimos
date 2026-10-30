@@ -1,0 +1,40 @@
+{
+    "providers": [
+        {
+            "type": "bitmap",
+            "ascent": 128,
+            "height": 256,
+            "file": "deimos:font/black.png",
+            "chars": [
+                "■"
+            ]
+        },
+        {
+            "type": "bitmap",
+            "ascent": 128,
+            "height": 256,
+            "file": "deimos:font/notification.png",
+            "chars": [
+                "?"
+            ]
+        },
+        {
+            "type": "bitmap",
+            "ascent": 10,
+            "height": 14,
+            "file": "deimos:font/left_click.png",
+            "chars": [
+                "🖱"
+            ]
+        },
+        {
+            "type": "bitmap",
+            "ascent": 10,
+            "height": 13,
+            "file": "deimos:font/left_right_move.png",
+            "chars": [
+                "↔"
+            ]
+        }
+    ]
+}

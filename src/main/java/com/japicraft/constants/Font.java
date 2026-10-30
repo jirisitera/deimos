@@ -1,8 +1,8 @@
 package com.japicraft.constants;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.kyori.adventure.key.Key;
 
 public class Font {
-    public static final Key DEFAULT = Key.key(Eris.NAMESPACE, "default");
+    public static final Key DEFAULT = Key.key(Deimos.NAMESPACE, "default");
 }

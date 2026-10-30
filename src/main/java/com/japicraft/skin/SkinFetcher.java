@@ -2,7 +2,7 @@ package com.japicraft.skin;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerSkin;
 import net.minestom.server.network.player.GameProfile;
@@ -50,7 +50,7 @@ public final class SkinFetcher {
                 }
             }
         } catch (Exception e) {
-            Eris.LOGGER.warn("Failed to parse skin texture JSON: {}", e.getMessage());
+            Deimos.LOGGER.warn("Failed to parse skin texture JSON: {}", e.getMessage());
         }
         return null;
     }
@@ -153,7 +153,7 @@ public final class SkinFetcher {
             try {
                 return downloadSkinBytes(url);
             } catch (Exception e) {
-                Eris.LOGGER.warn("Failed to download skin for {} from {}: {}", player.getUsername(), url, e.getMessage());
+                Deimos.LOGGER.warn("Failed to download skin for {} from {}: {}", player.getUsername(), url, e.getMessage());
                 return getFallbackSkin();
             }
         });

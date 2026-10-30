@@ -1,0 +1,22 @@
+{
+    "providers": [
+        {
+            "type": "bitmap",
+            "ascent": 0,
+            "height": 272,
+            "file": "deimos:font/windup/progress.png",
+            "chars": [
+                "|"
+            ]
+        },
+        {
+            "type": "bitmap",
+            "ascent": 0,
+            "height": 272,
+            "file": "deimos:font/windup/ready.png",
+            "chars": [
+                "-"
+            ]
+        }
+    ]
+}

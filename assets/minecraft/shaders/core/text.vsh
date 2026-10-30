@@ -28,7 +28,7 @@ layout(location = 2) out vec4 vertexColor;
 layout(location = 3) out vec2 texCoord0;
 
 // @formatter:off
-#include <eris:text/vertex/import.glsl>
+#include <deimos:text/vertex/import.glsl>
 // @formatter:on
 
 void main() {
@@ -44,6 +44,6 @@ void main() {
     texCoord0 = UV0;
 
     // @formatter:off
-    #include <eris:text/vertex/patch.glsl>
+    #include <deimos:text/vertex/patch.glsl>
     // @formatter:on
 }

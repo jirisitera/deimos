@@ -1,6 +1,6 @@
 package com.japicraft.server;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.kyori.adventure.resource.ResourcePackInfo;
 import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.text.Component;
@@ -35,7 +35,7 @@ public class GlobalResourcePack {
 
     public static void register() {
         // prepare resource pack
-        URI packURI = URI.create("https://github.com/jirisitera/eris/releases/latest/download/eris.zip");
+        URI packURI = URI.create("https://github.com/jirisitera/deimos/releases/latest/download/deimos.zip");
         String packHash = GlobalResourcePack.calculateHash(packURI);
         if (packHash == null) {
             return;
@@ -46,6 +46,6 @@ public class GlobalResourcePack {
             .required(true)
             .build();
         MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> event.getPlayer().sendResourcePacks(request));
-        Eris.LOGGER.atInfo().log(Component.text("Loaded global resource pack."));
+        Deimos.LOGGER.atInfo().log(Component.text("Loaded global resource pack."));
     }
 }

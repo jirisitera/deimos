@@ -33,13 +33,13 @@ java {
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "com.japicraft.Eris"
+            attributes["Main-Class"] = "com.japicraft.Deimos"
         }
     }
     shadowJar {
         archiveClassifier.set("")
         archiveVersion.set("")
-        archiveBaseName.set("eris")
+        archiveBaseName.set("deimos")
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
         exclude("META-INF/LICENSE.txt")
         mergeServiceFiles()

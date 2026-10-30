@@ -44,7 +44,7 @@ vec4 calculateFinalColor(vec4 color) {
 }
 
 // @formatter:off
-#include <eris:text/fragment/import.glsl>
+#include <deimos:text/fragment/import.glsl>
 // @formatter:on
 
 void main() {
@@ -67,6 +67,6 @@ void main() {
     #endif
 
     // @formatter:off
-    #include <eris:text/fragment/patch.glsl>
+    #include <deimos:text/fragment/patch.glsl>
     // @formatter:on
 }

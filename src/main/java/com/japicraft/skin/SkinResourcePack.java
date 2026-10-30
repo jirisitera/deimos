@@ -11,14 +11,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public final class SkinResourcePack {
-    public static final String SKIN_TEXTURE_PATH = "assets/eris/textures/item/skin.png";
+    public static final String SKIN_TEXTURE_PATH = "assets/deimos/textures/item/skin.png";
     private static final byte[] PACK_META = """
             {
                 "pack": {
                     "description": [
                         {
                             "color": "#FF5533",
-                            "text": "Eris Dynamic Modules Pack"
+                            "text": "Deimos Dynamic Modules Pack"
                         }
                     ],
                     "min_format": 97,

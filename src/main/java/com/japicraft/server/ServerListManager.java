@@ -1,6 +1,6 @@
 package com.japicraft.server;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.minestom.server.MinecraftServer;
@@ -12,11 +12,11 @@ import java.io.InputStream;
 
 public class ServerListManager {
     private static final byte[] FAVICON = ServerListManager.loadIcon();
-    private static final Component DESCRIPTION = Component.text("Eris Test Server").color(TextColor.fromHexString("#FF5533"));
-    private static final Status.VersionInfo VERSION_INFO = new Status.VersionInfo("Eris", MinecraftServer.PROTOCOL_VERSION);
+    private static final Component DESCRIPTION = Component.text("Deimos Test Server").color(TextColor.fromHexString("#FF5533"));
+    private static final Status.VersionInfo VERSION_INFO = new Status.VersionInfo("Deimos", MinecraftServer.PROTOCOL_VERSION);
 
     private static byte[] loadIcon() {
-        try (InputStream stream = Eris.class.getResourceAsStream("/icon.png")) {
+        try (InputStream stream = Deimos.class.getResourceAsStream("/icon.png")) {
             if (stream == null) {
                 return null;
             }

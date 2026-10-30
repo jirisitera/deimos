@@ -1,0 +1,6 @@
+{
+    "parent": "deimos:item/computer_on",
+    "textures": {
+        "probe": "deimos:item/map_probe_2"
+    }
+}

@@ -1,5 +1,5 @@
-name: Eris
-run-name: Eris v${{ inputs.version }}
+name: Deimos
+run-name: Deimos v${{ inputs.version }}
 on:
   workflow_dispatch:
     inputs:
@@ -35,12 +35,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - run: gradle shadowJar
       - name: package resource pack
-        run: zip -r eris.zip assets LICENSE.txt pack.mcmeta pack.png README.md
+        run: zip -r deimos.zip assets LICENSE.txt pack.mcmeta pack.png README.md
       - uses: Kir-Antipov/mc-publish@v3
         with:
-          name: Eris v${{ inputs.version }}
+          name: Deimos v${{ inputs.version }}
           version: ${{ inputs.version }}
           files: |
-            build/libs/eris.jar
-            eris.zip
+            build/libs/deimos.jar
+            deimos.zip
           github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 package com.japicraft.environment;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import com.japicraft.camera.MapProbe;
 import net.hollowcube.schem.Schematic;
 import net.hollowcube.schem.reader.SchematicReader;
@@ -45,8 +45,8 @@ public final class StructureLoader {
         new Pos(1.479736328125, 13.925, 13.46142578125),
         new Pos(15.54638671875, 13.925, 13.45458984375)
     };
-    private static final ItemStack DEACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "computer");
-    private static final ItemStack CAMERA = ItemStack.of(Material.ECHO_SHARD).withItemModel(Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "camera");
+    private static final ItemStack DEACTIVATED = ItemStack.of(Material.ECHO_SHARD).withItemModel(Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "computer");
+    private static final ItemStack CAMERA = ItemStack.of(Material.ECHO_SHARD).withItemModel(Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "camera");
     private final List<Entity> entities = new ArrayList<>();
 
     public static void load(ClassLoader loader, String path, InstanceContainer instance) {
@@ -60,7 +60,7 @@ public final class StructureLoader {
             }
             byte[] data = stream.readAllBytes();
             Schematic structure = SchematicReader.structure().read(data);
-            structure.createBatch().apply(instance, 0, 10, 0, _ -> Eris.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
+            structure.createBatch().apply(instance, 0, 10, 0, _ -> Deimos.LOGGER.atInfo().log(Component.text("Loaded structure " + path + " into the primary instance.")));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

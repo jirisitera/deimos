@@ -1,7 +1,6 @@
 package com.japicraft.skin;
 
-import com.japicraft.Eris;
-import com.japicraft.environment.InstanceManager;
+import com.japicraft.Deimos;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import net.kyori.adventure.resource.ResourcePackInfo;
@@ -34,13 +33,13 @@ public class SkinResourcePackServer {
         try {
             start();
         } catch (Exception e) {
-            Eris.LOGGER.error("Failed to start skin resource pack server.", e);
+            Deimos.LOGGER.error("Failed to start skin resource pack server.", e);
         }
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     public static UUID getPackId(UUID playerUuid) {
-        return UUID.nameUUIDFromBytes(("eris-skin-" + playerUuid).getBytes());
+        return UUID.nameUUIDFromBytes(("deimos-skin-" + playerUuid).getBytes());
     }
 
     public synchronized void start() throws IOException {
@@ -51,14 +50,14 @@ public class SkinResourcePackServer {
         httpServer.createContext("/pack/", this::handlePackRequest);
         httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         httpServer.start();
-        Eris.LOGGER.info("Resource pack HTTP server started on {}:{}.", HOST, PORT);
+        Deimos.LOGGER.info("Resource pack HTTP server started on {}:{}.", HOST, PORT);
     }
 
     public synchronized void stop() {
         if (httpServer != null) {
             httpServer.stop(0);
             httpServer = null;
-            Eris.LOGGER.info("Resource pack HTTP server stopped.");
+            Deimos.LOGGER.info("Resource pack HTTP server stopped.");
         }
     }
 
@@ -123,7 +122,7 @@ public class SkinResourcePackServer {
                 .build()
             );
         } catch (Exception e) {
-            Eris.LOGGER.error("Failed to generate and send skin resource pack to {}.", player.getUsername(), e);
+            Deimos.LOGGER.error("Failed to generate and send skin resource pack to {}.", player.getUsername(), e);
         }
     }
     public void register() {

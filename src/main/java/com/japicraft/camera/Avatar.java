@@ -1,6 +1,6 @@
 package com.japicraft.camera;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import com.japicraft.skin.SkinFetcher;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -15,9 +15,9 @@ import net.minestom.server.tag.Tag;
 import java.util.Objects;
 
 public final class Avatar {
-    private static final String LEFT_HAND = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "arm_left";
-    private static final String RIGHT_HAND = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "arm_right";
-    private static final String TORSO = Eris.NAMESPACE + Eris.NAMESPACE_SEPARATOR + "torso";
+    private static final String LEFT_HAND = Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "arm_left";
+    private static final String RIGHT_HAND = Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "arm_right";
+    private static final String TORSO = Deimos.NAMESPACE + Deimos.NAMESPACE_SEPARATOR + "torso";
     private static final double FORWARD_OFFSET = 0.15;
     private static final double SIDE_OFFSET = 0.35;
     private static final double TABLE_HEIGHT_OFFSET = 0.25;

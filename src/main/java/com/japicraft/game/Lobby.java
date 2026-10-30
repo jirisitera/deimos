@@ -49,7 +49,7 @@ public final class Lobby {
             director.doors().toggleRight(player, container);
         }
 
-        Notification.info(player, "Welcome to Eris!");
+        Notification.info(player, "Welcome to Deimos!");
     }
 
     public static void leave(Player player) {

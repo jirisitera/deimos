@@ -1,6 +1,6 @@
 package com.japicraft.environment;
 
-import com.japicraft.Eris;
+import com.japicraft.Deimos;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -8,8 +8,6 @@ import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
-import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.world.DimensionType;
 
 public class InstanceManager {
     public static final Pos INITIAL_SPAWN = new Pos(0.5, 10.5, 0.5, 0.0F, 0.0F);
@@ -19,7 +17,7 @@ public class InstanceManager {
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
         // generate main structure
-        StructureLoader.load(Eris.class.getClassLoader(), "office.nbt", instance);
+        StructureLoader.load(Deimos.class.getClassLoader(), "office.nbt", instance);
         StructureLoader loader = new StructureLoader();
         loader.spawnAll(instance);
         loader.assignEntityData(player);
